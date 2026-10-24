@@ -19,3 +19,15 @@
   deployment or live login acceptance is claimed.
 - Next steps: finalize public discovery adapter, site registration/configuration
   and remaining account lifecycle decisions before a production integration.
+
+## 2026-10-24 — Public publication verified
+
+- What we did: created `skirsch/passli_labs` as PUBLIC and pushed the initial kit.
+- Command / executable: `gh repo create --public --source . --remote origin --push`;
+  unauthenticated GitHub API and raw-content requests; SHA-256 comparisons.
+- Outputs: https://github.com/skirsch/passli_labs, default branch `main`.
+- Results: anonymous API confirms public visibility. Published README, site
+  specification, compatibility reference and representative SVG/PNG files match
+  the local files byte-for-byte. Original application checkout was not changed.
+- Next steps: use this public kit as the site integration handoff; complete the
+  dependencies listed in `docs/integration_status.md` before live onboarding.
