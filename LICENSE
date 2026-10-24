@@ -17,7 +17,8 @@ LIABILITY ARISING FROM THEIR USE.
 
 Brand assets
 ------------
-Files under assets/icons are excluded from the permission grant above.
+Files under assets/icons and copies of those icons, including
+demo/public/passli-mark.svg, are excluded from the permission grant above.
 Permission is granted to copy and display those files to identify Passli,
 document Passli integrations and offer Login with Passli. Resizing and format
 conversion are allowed if the appearance and proportions are preserved.

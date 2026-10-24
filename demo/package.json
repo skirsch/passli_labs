@@ -1,0 +1,11 @@
+{
+  "name": "passli-integration-demo",
+  "version": "0.1.3",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.16.0" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

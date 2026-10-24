@@ -1,5 +1,32 @@
 # Work log
 
+## 2026-10-24 — Complete live site integration reference
+
+- What we did: implemented Northstar's server-side first-use choice, explicit
+  existing-account linking, settings Link/Unlink Passli, new-account creation,
+  returning login, logout and suspended/terminated session handling. Connected
+  the hosted site's main mode to real Passli Direct authentication. Added a
+  separate guided walkthrough with isolated cookie, backend and SQLite database.
+- Command / executable: `cd demo && npm test`; exact Node 24.16 runtime gates;
+  public HTTPS and actual provider/demo HTTP journeys with a dedicated synthetic
+  Passli account; browser walkthrough and installation-hidden-state checks.
+- Outputs: https://demo.passli.app, https://demo.passli.app/walkthrough/,
+  `demo/` source version 0.1.3, integration guide version 4, updated root README.
+- Results: 11 focused tests pass locally and in the exact deployed runtime.
+  Live real-provider acceptance passes restricted setup, named account linking,
+  fresh linking proof, cross-browser returning login, unlink preservation and
+  session invalidation, no automatic relink, explicit separate registration and
+  protected API denial after provider lock. Synthetic fixture locked afterward.
+  Public checks confirm separate real/walkthrough cookies, CSRF and account
+  state; simulated approval is rejected by real mode. Browser UI checks confirm
+  account choices, confirmation, linked settings and unlink cancellation.
+- Validation limits: actual physical browser/phone acceptance is separate.
+  Northstar's local account passwords and projects are fictional. The demo
+  uses the Direct provider-token compatibility profile, not protected threshold
+  authentication. General app/PWA discovery and final unlink policy remain open.
+- Next steps: use the real demo and guided walkthrough alongside the integration
+  guide; replace the fictional local login fixture when adapting a real site.
+
 ## 2026-10-24 — Site-styled sign-in page mockup
 
 - What we did: replaced the isolated button sample with a complete compact

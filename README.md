@@ -2,6 +2,18 @@
 
 Public integration documentation and official icon assets for **Login with Passli**.
 
+**[Integration guide](docs/Passli_site_integration_spec.md)** ·
+**[Live demo — demo.passli.app](https://demo.passli.app)** ·
+**[Guided walkthrough](https://demo.passli.app/walkthrough/)** ·
+**[Demo implementation](demo/README.md)**
+
+The live demo is **Northstar**, a fictional site using real Passli Direct login.
+Explore first-use account choice, explicit existing-account linking, new-account
+creation, returning login, account settings and unlinking. The site's backend
+verifies Passli assertions and current authorization; Northstar's own passwords
+and projects are deliberately fictional. The [implementation notes](demo/README.md)
+explain which components to replace with your site's real account authentication.
+
 <img src="assets/icons/passli-mark.svg" alt="Passli" width="80" height="80">
 
 ## Start here
@@ -11,6 +23,9 @@ Public integration documentation and official icon assets for **Login with Passl
 - [Direct/FedCM compatibility reference](docs/compatibility_protocol.md): request shapes and server verification responsibilities.
 - [Icons and button guidelines](assets/README.md): SVG and PNG downloads and usage rules.
 - [Sign-in page mockup](examples/login-button.html): compact provider buttons styled by the host site. Append `?preview=1` to show Passli in the static preview.
+- [Complete demo source](demo/README.md): server-enforced accounts, linking,
+  unlinking, sessions, real Passli callbacks and an optional local walkthrough.
+- [Executable guide](docs/executables.md): local preview, demo startup and checks.
 
 To hand this to an implementation assistant:
 
@@ -18,11 +33,19 @@ To hand this to an implementation assistant:
 
 ## Current status
 
-This is an integration reference and asset kit, not a production login SDK.
-The existing Direct/FedCM compatibility demonstrations do not implement the
-protected threshold-login target. Public installation discovery, site onboarding
-configuration and parts of the account lifecycle still require completion or
-confirmation. See the [readiness document](docs/integration_status.md).
+This is an integration reference, working demo and asset kit, not a universal
+production login SDK. The live demo uses the Direct provider-token compatibility
+profile. It does not implement the unfinished protected threshold-login target.
+Universal app/PWA discovery, registration of additional sites and final unlink
+policy still require work. See the [readiness document](docs/integration_status.md).
+
+The demo shows the Passli login button after detecting the current extension.
+Without supported installation evidence, normal fictional site sign-in remains
+available; account settings still show the Link Passli flow. You can also run the
+separate [guided walkthrough](https://demo.passli.app/walkthrough/) to inspect
+approval and suspension screens without a real Passli account. It uses an isolated
+backend, cookie and database and labels all approvals as simulated. You can also
+[run it locally](demo/README.md#run-locally).
 
 Use **Continue with Passli** alongside other provider options, or **Login with
 Passli** to match the site's wording. The host site draws the button; Passli

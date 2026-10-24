@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 3
+Version: 4
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -10,6 +10,12 @@ Give this document to an AI implementing Login with Passli on an existing site.
 The instruction can simply be: **Use Passli_site_integration_spec.md to add
 Passli login to this site.** A separate custom implementation prompt is not
 required. Preserve the site's existing authentication and account system.
+
+Explore the complete [live demo](https://demo.passli.app) and its
+[public implementation](../demo/README.md) alongside this guide. Northstar uses
+real Passli Direct authentication with fictional local accounts. Replace its
+local authentication fixture with the target site's real login and MFA; the
+demo's public sample password must never protect customer data.
 
 This document contains the site-facing product requirements. Source references
 at the end provide protocol and implementation context; they are not substitutes
@@ -287,12 +293,15 @@ provider-token demo or passing typecheck a completed protected integration.
 - [Integration readiness](integration_status.md): available reference behavior,
   planned features and information needed before onboarding a site.
 - [Icon assets and button guidance](../assets/README.md).
+- [Live demo](https://demo.passli.app) and [demo implementation](../demo/README.md):
+  complete account lifecycle example, security boundaries and local walkthrough.
 - Browser installation constraints:
   [Chrome installed related apps documentation](https://developer.chrome.com/docs/capabilities/get-installed-related-apps).
 
-RP1 refers to Passli's compatibility demonstration. Internal implementation
-source and supporting design documents are not included in this public kit;
-this document contains the site-facing requirements. Request supported client
+RP1 refers to an earlier Passli compatibility demonstration. The Northstar demo
+source is included in this kit; the provider's internal implementation and
+supporting design documents are not. This document contains site-facing
+requirements. Request supported client
 registration and protocol configuration from the Passli maintainer before
 implementing a live integration. Do not assume access to internal source.
 

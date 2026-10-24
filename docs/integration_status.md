@@ -1,25 +1,28 @@
 # Integration readiness
 
-Version: 1
+Version: 2
 Updated: 2026-10-24
 
 ## What this repository provides
 
 Site-facing integration requirements, a documented compatibility profile,
-current Passli SVG/PNG icons and a static button presentation example.
-The documentation was checked against the current implementation source. This
-publication did not run a live login, deploy a provider or certify a browser flow.
+current Passli SVG/PNG icons, a static button presentation example and the
+[live Northstar demo](https://demo.passli.app). The demo uses real Passli Direct
+authentication with fictional local accounts. See the [implementation](../demo/README.md).
+Public HTTP acceptance with a dedicated synthetic Passli account covered linking,
+returning login from a fresh browser session, unlinking, registration and protected
+API denial after provider lock. Physical browser/phone acceptance is separate.
 
 | Capability | Status |
 | --- | --- |
-| Direct login with state, nonce and S256 PKCE | Existing compatibility demonstration |
+| Direct login with state, nonce and S256 PKCE | Implemented in the live demo using real provider assertions |
 | FedCM assertion and backend token verification | Existing compatibility demonstration; browser support must be validated |
 | Server verification of provider grant/session | Existing compatibility demonstration |
 | Installation discovery | Extension discovery building blocks exist; public shared adapter and platform matrix are pending |
 | Installed app/PWA detection | Requires supported platform APIs and verified app/site association; universal detection is unavailable |
-| Existing-site account lookup, explicit linking and new-account choice | Site requirements specified; complete production reference is pending |
-| Suspension/resume and protected API enforcement | Requirements specified; implement and verify across the target site's backend |
-| Unlink Passli | Capability specified; detailed safeguards remain proposed for review |
+| Existing-site account lookup, explicit linking and new-account choice | Implemented in the demo backend; replace its fictional local authentication with the target site's real login/MFA |
+| Suspension/resume and protected API enforcement | Demo backend checks provider status; local tests cover wrong-account resume and unchanged deadlines; live provider-lock denial verified |
+| Unlink Passli | Implemented in the demo with candidate reauthentication, alternative-login and session-invalidation safeguards; final general policy remains open |
 | Protected threshold login | Target defined; final protocol envelope, implementation and migration are pending |
 | Public hosted login script / universal SDK | Not supplied by this repository |
 
@@ -37,6 +40,10 @@ Coordinate with the Passli maintainer through this repository to obtain:
 4. Required assurance and the grant/session-status contract.
 5. A supported installation discovery mechanism for each target browser/platform.
 6. Agreed account-linking, unlinking and session lifecycle behavior.
+
+The public demo client is `demo`, registered only for `https://demo.passli.app`
+with callback `https://demo.passli.app/auth/passli/callback`. Do not reuse that
+client ID on another site.
 
 Keep deployment configuration explicit. Do not infer endpoint availability from
 this reference or invent a client registration API. The compatibility profile

@@ -1,6 +1,6 @@
 # Direct/FedCM compatibility reference
 
-Version: 1
+Version: 2
 Updated: 2026-10-24
 Status: Existing demonstration profile; not the protected threshold-login protocol.
 
@@ -99,9 +99,12 @@ Both paths require the same server-owned transaction and cryptographic checks:
    Apply the site's shorter transaction deadline independently.
 5. Require integer `requiredLoA` and `achievedLoA`: both meet the server's
    requested level, neither exceeds 6, and achieved is at least required.
-6. Validate `gid` and `sid` using the supported capability contract. Preserve
-   their complete opaque values, including any routing prefix; do not assume
-   each is a fixed 43-character string. Do not log or expose them to the browser.
+6. Validate `gid` and `sid` using the supported capability contract. The current
+   format is either 43 base64url characters or `region.encryptedRouting.random`,
+   with a 1–32-character lowercase region, 39–220 base64url routing characters
+   and 43 base64url random characters. Raw account-prefixed forms are rejected.
+   Preserve the entire opaque value; do not assume a fixed 43-character length.
+   Do not log capabilities or expose them to the browser.
 7. Confirm current authorization from the backend as below, then resolve the
    local binding and complete explicit setup if needed.
 
