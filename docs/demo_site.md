@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 2
+Version: 3
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -56,3 +56,17 @@ Deploy an independent demo service and route only demo.passli.app to it. Preserv
 the existing private Passli application and other relying-party demos. Verify
 public HTTPS, initial HTML, linked assets, backend enforcement and complete user
 journeys before advertising the demo as live in the README.
+
+## Temporary demo accounts
+
+Enter any email address with password `demo` to represent an existing site account.
+The address is normalized and displayed at named linking confirmation; no mailbox
+is verified and no email is sent. This public credential is a demo fixture only.
+
+Each account and its local Passli binding is forgotten 30 minutes after account
+creation. Activity and repeated logins never extend that deadline. Expiry denies
+protected access immediately and a background sweep removes stored account data
+and bindings within 15 seconds, even without browser activity. Existing records
+use their original workspace creation time when migrating to this policy. A later
+Passli login starts unbound setup again. Other accounts retain their own fixed
+deadlines. The real Passli account and provider-side history are unaffected.

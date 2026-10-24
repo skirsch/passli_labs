@@ -8,17 +8,31 @@ import {version} from './version.mjs';
 import {createPassli} from './passli.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
-export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',now=Date.now,mode='walkthrough',provider,publicPrefix=''}={}) {
+export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',now=Date.now,mode='walkthrough',provider,publicPrefix='',cleanupInterval=15000}={}) {
   if (!['real','walkthrough'].includes(mode)) throw Error('Unknown demo mode.');
   const passli=mode==='real'?(provider || createPassli({origin})):null;
   const secure=new URL(origin).protocol === 'https:',cookieName=(secure?'__Host-':'')+(mode==='real'?'northstar-demo':'northstar-walkthrough');
   if (database !== ':memory:') mkdirSync(dirname(resolve(database)),{recursive:true});
   const db=new DatabaseSync(database);
-  db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS visitors (id TEXT PRIMARY KEY, state TEXT NOT NULL, updated INTEGER NOT NULL)');
+  db.exec('PRAGMA journal_mode=WAL; PRAGMA secure_delete=ON; CREATE TABLE IF NOT EXISTS visitors (id TEXT PRIMARY KEY, state TEXT NOT NULL, updated INTEGER NOT NULL)');
   db.exec('CREATE TABLE IF NOT EXISTS bindings (subject TEXT PRIMARY KEY, visitor TEXT NOT NULL, account TEXT NOT NULL)');
   const load=db.prepare('SELECT state FROM visitors WHERE id=?'),save=db.prepare('INSERT INTO visitors VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated');
   const removeOld=db.prepare('DELETE FROM visitors WHERE updated < ?');
   const bindingFor=db.prepare('SELECT visitor,account FROM bindings WHERE subject=?');
+  const forgetExpired=(id,world)=>{
+    expire(world,now());
+    for(const binding of db.prepare('SELECT account FROM bindings WHERE visitor=?').all(id))
+      if(!world.accounts.some(account=>account.id===binding.account))db.prepare('DELETE FROM bindings WHERE visitor=? AND account=?').run(id,binding.account);
+  };
+  const sweep=()=>{
+    for(const row of db.prepare('SELECT id,state FROM visitors').all()) {
+      const world=JSON.parse(row.state);forgetExpired(row.id,world);
+      const state=JSON.stringify(world);if(state!==row.state)save.run(row.id,state,now());
+    }
+    db.prepare('DELETE FROM bindings WHERE visitor IN (SELECT id FROM visitors WHERE updated < ?)').run(now()-86400000);
+    removeOld.run(now()-86400000);
+  };
+  sweep();const cleanup=setInterval(sweep,cleanupInterval);cleanup.unref();
   const view=world=>({...publicState(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
   const files=new Map([['/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
   if(publicPrefix)files.get('/').body=Buffer.from(files.get('/').body.toString().replace('href="/"',`href="${publicPrefix}/"`));
@@ -40,8 +54,8 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     const setCookie=()=>res.setHeader('Set-Cookie',`${cookieName}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure?'; Secure':''}`);
     if (!world) {id=random();world=freshWorld(now());if(mode==='real')world.installed=false;setCookie();}
     else world=JSON.parse(world.state);
-    expire(world,now());
-    const persist=()=>save.run(id,JSON.stringify(world),now());
+    forgetExpired(id,world);
+    const persist=()=>{forgetExpired(id,world);save.run(id,JSON.stringify(world),now());};
     const rotate=()=>{const previous=id;id=random();db.prepare('UPDATE bindings SET visitor=? WHERE visitor=?').run(id,previous);db.prepare('DELETE FROM visitors WHERE id=?').run(previous);setCookie();};
     const syncBindings=()=>{
       if(mode!=='real')return;
@@ -49,7 +63,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       const insert=db.prepare('INSERT INTO bindings VALUES (?,?,?)');
       for(const account of world.accounts)for(const identity of account.identities)insert.run(identity,id,account.id);
     };
-    if (now()-swept>60000) {if(mode!=='real')removeOld.run(now()-86400000);swept=now();for (const [key,r] of rates) if (r.until<=now()) rates.delete(key);}
+    if (now()-swept>60000) {sweep();swept=now();for (const [key,r] of rates) if (r.until<=now()) rates.delete(key);}
     if (path==='/auth/passli/callback') {
       const url=new URL(req.url,origin),proof=world.pending;
       const redirect=()=>{res.writeHead(303,{Location:'/'});res.end();};
@@ -59,10 +73,10 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       try {
         const result=await passli.complete(proof,url.searchParams.get('code'));
         if(proof.expires<=now())throw Error('Login transaction expired.');
-        const reserved=load.get(id);if(!reserved)throw Error('Site transaction cancelled.');world=JSON.parse(reserved.state);
+        const reserved=load.get(id);if(!reserved)throw Error('Site transaction cancelled.');world=JSON.parse(reserved.state);forgetExpired(id,world);
         if(world.inflight!==proof.id || world.pending)throw Error('Site transaction changed.');
         world.inflight=null;
-        const owner=bindingFor.get(result.identity);
+        sweep();const owner=bindingFor.get(result.identity);
         if(proof.action==='login'&&owner) {
           const original=load.get(owner.visitor);if(!original)throw Error('Linked account is unavailable.');
           world=JSON.parse(original.state);id=owner.visitor;world.session=null;world.setup=null;world.pending=null;
@@ -112,7 +126,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       persist();return json(error.status || 400,{state:view(world),message:error instanceof SyntaxError?'Invalid JSON.':error.message});
     }
   });
-  server.once('close',()=>db.close());return server;
+  server.once('close',()=>{clearInterval(cleanup);db.close();});return server;
 }
 if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const port=Number(process.env.PORT||18766),origin=process.env.DEMO_ORIGIN||`http://127.0.0.1:${port}`;

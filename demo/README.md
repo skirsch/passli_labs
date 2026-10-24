@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 2
+Version: 3
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -55,7 +55,7 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
 
 1. **Link an existing account:** Continue with Passli → complete real Passli
    authentication → Link to my existing account → sign in to the fictional
-   Northstar account → confirm Link Passli to Avery Chen → fresh Passli approval.
+   Northstar account → enter any email address with password `demo`, confirm the named target and complete → fresh Passli approval.
 2. **Register:** unbound Passli login → Create new account → explicit creation →
    fresh approval → Jordan's separate account. No full account exists before
    registration and binding complete.
@@ -87,13 +87,13 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
 ## Reference boundaries
 
 Passli authentication is real in the hosted real mode. **Northstar's own accounts,
-passwords and projects are fictional.** The filled-in `demo-password` is deliberately
+passwords and projects are fictional.** The filled-in `demo` is deliberately
 public and proves control only within this demo's isolated fictional account
 space. Replace that local-login fixture with your site's real authentication/MFA;
 never reuse it to protect customer data. No actual Passli passwords, recovery
 material, private keys or profile data are requested by Northstar.
 
-Bindings are durable on the server, unique by verified subject for this fixed
+Bindings are stored on the server until the account expires, unique by verified subject for this fixed
 issuer/client, and resolved only after proof verification. Each initial visitor
 gets an isolated fictional workspace; a returning real identity resolves its
 existing workspace. Authentication rotates the opaque cookie and ends that
@@ -116,3 +116,17 @@ in your supported environments.
 The Direct profile is provider-token compatibility authentication. It is not
 the unfinished protected threshold-login target. Real browser/phone acceptance
 and synthetic HTTP verification are reported separately in release evidence.
+
+## Temporary demo accounts
+
+Enter any email address with password `demo` to represent an existing site account.
+The address is normalized and displayed at named linking confirmation; no mailbox
+is verified and no email is sent. This public credential is a demo fixture only.
+
+Each account and its local Passli binding is forgotten 30 minutes after account
+creation. Activity and repeated logins never extend that deadline. Expiry denies
+protected access immediately and a background sweep removes stored account data
+and bindings within 15 seconds, even without browser activity. Existing records
+use their original workspace creation time when migrating to this policy. A later
+Passli login starts unbound setup again. Other accounts retain their own fixed
+deadlines. The real Passli account and provider-side history are unaffected.

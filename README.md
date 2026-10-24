@@ -14,6 +14,10 @@ verifies Passli assertions and current authorization; Northstar's own passwords
 and projects are deliberately fictional. The [implementation notes](demo/README.md)
 explain which components to replace with your site's real account authentication.
 
+For the demo, enter **any email address** with password **`demo`** to represent
+an existing account. Demo accounts and their Passli links are forgotten **30 minutes
+after creation**; signing in again does not extend that time.
+
 <img src="assets/icons/passli-mark.svg" alt="Passli" width="80" height="80">
 
 ## Start here

@@ -75,3 +75,29 @@
   the local files byte-for-byte. Original application checkout was not changed.
 - Next steps: use this public kit as the site integration handoff; complete the
   dependencies listed in `docs/integration_status.md` before live onboarding.
+
+
+## 2026-10-24 — Demo 0.1.4: fixed account lifetime and arbitrary-email linking
+
+- What we did: replaced the fixed-account selector with an editable email field
+  and public password `demo`; kept real Passli proof and explicit named linking.
+  Added a fixed 30-minute account deadline, immediate access denial, idle SQLite
+  cleanup of accounts/bindings within 15 seconds, and UI/privacy/documentation
+  disclosures. Activity and repeat login do not extend account lifetime.
+- Command / executable: `node --test demo/test/flows.test.mjs demo/test/passli.test.mjs`;
+  same suite in the pinned production Node 24.16 image; standalone demo container
+  replacement; public health/static checks; browser walkthrough; dedicated
+  synthetic real Passli acceptance script (`real-demo014-qa.mjs`, operator-only).
+- Outputs: public demo version 0.1.4, source under `demo/`, updated README and
+  demo guide version 3. Operator QA receipt stays outside this public repository.
+- Results: all 14 tests passed locally and in production runtime, including idle
+  deletion of stored account data/global bindings and fresh setup for a returning
+  verified identity after expiry. Live real-mode acceptance passed arbitrary-email
+  named linking, fresh proof, cross-browser return, unlink, registration and lock
+  denial. Browser walkthrough linked `someone@example.org` with `demo` and showed
+  the expiry notice. Both public health endpoints report 0.1.4. Initial Windows
+  cleanup-hook ordering failed; moving temporary-directory removal after server
+  closure corrected it. The 30-minute boundary used an injected test clock;
+  no physical-phone acceptance or 30-minute wall-clock wait is claimed.
+- Next steps: none for this change; real Passli account/provider history remains
+  outside Northstar's temporary-account cleanup.
