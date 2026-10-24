@@ -13,6 +13,7 @@ export function freshWorld(now = Date.now()) {
 }
 export function expire(world, now = Date.now()) {
   for (const account of world.accounts) {
+    account.linkIds ??= Object.fromEntries(account.identities.map(subject=>[subject,random()]));
     account.createdAt ??= world.created;
     account.expiresAt ??= account.createdAt + accountLifetime;
   }
@@ -63,7 +64,7 @@ function checkProof(world, body, now, verifiedIdentity) {
 function bind(world, account, identity) {
   const owner = world.accounts.find(a => a.identities.includes(identity));
   if (owner && owner.id !== account.id) fail('That Passli identity is already linked to another Northstar account. No accounts were moved or merged.');
-  if (!account.identities.includes(identity)) account.identities.push(identity);
+  if (!account.identities.includes(identity)) {account.identities.push(identity);(account.linkIds??={})[identity]=random();}
 }
 function localAccount(world, body, now) {
   const email=typeof body.username==='string'?body.username.trim().toLowerCase():'';
@@ -76,7 +77,7 @@ function localAccount(world, body, now) {
   return account;
 }
 
-export function act(world, body, now = Date.now(), {verifiedIdentity} = {}) {
+export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnlink=false} = {}) {
   expire(world, now);
   const action = body.action;
   switch (action) {
@@ -100,6 +101,14 @@ export function act(world, body, now = Date.now(), {verifiedIdentity} = {}) {
         else {world.session = null; world.setup = {subject:identity,expires:now+5*minute}; world.screen = 'setup';}
         return '';
       }
+      if (proof.action === 'unlink') {
+        const account=requireAccount(world);
+        if(account.id!==proof.accountId||world.session.id!==proof.sessionId||account.linkIds?.[identity]!==proof.bindingId)fail('The linked account changed. Start unlinking again.');
+        if(verifiedIdentity ? !verifiedUnlink : body.achievedLoA!==4)fail('Unlink requires a fresh verified LoA 4 signature.');
+        account.identities=account.identities.filter(subject=>subject!==identity);delete account.linkIds[identity];world.setup=null;world.providerAssociation=null;
+        if(world.session.method==='passli'&&world.session.subject===identity){world.session=null;world.screen='login';}else world.screen='settings';
+        return 'Passli unlinked after LoA 4 approval. Your account and projects are preserved.';
+      }
       if (proof.action === 'resume') {
         if (!world.session || world.session.id !== proof.sessionId || world.session.subject !== identity || world.session.expires <= now || world.providerStatus !== 'suspended') fail('The original session can no longer be resumed. Sign in again.');
         world.providerStatus = 'active'; world.screen = 'home'; return 'Your original session has resumed.';
@@ -115,7 +124,7 @@ export function act(world, body, now = Date.now(), {verifiedIdentity} = {}) {
         if (world.accounts.some(a => a.identities.includes(identity))) fail('That identity was linked while registration was pending. Start a new login.');
         if (world.accounts.length >= 10) fail('Reset the demo before creating more sample accounts.');
         const number = world.accounts.length;
-        const account = {id:random(), name:'Jordan Morgan', email:`jordan${number}@example.test`, identities:[identity],createdAt:now,expiresAt:now+accountLifetime};
+        const account = {id:random(), name:'Jordan Morgan', email:`jordan${number}@example.test`, identities:[identity],linkIds:{[identity]:random()},createdAt:now,expiresAt:now+accountLifetime};
         world.accounts.push(account); session(world,account,'passli',identity,now); world.setup = null; world.screen = 'home'; return 'Your new Northstar account is ready.';
       }
       fail('Unsupported approval.'); break;
@@ -142,17 +151,14 @@ export function act(world, body, now = Date.now(), {verifiedIdentity} = {}) {
       }
       pending(world,'register',now,{subject:world.setup.subject}); return '';
     case 'unlink-start': {
-      const account = requireAccount(world);if (!account.identities.length) fail('No Passli link exists.');
-      world.pending = {id:random(),action:'unlink',accountId:account.id,sessionId:world.session.id,expires:now+minute};world.screen='unlink-confirm';return '';
+      const account=requireAccount(world);if(!account.identities.length)fail('No Passli link exists.');
+      world.pending=null;world.setup=null;world.screen='unlink-confirm';return '';
     }
     case 'unlink': {
-      const account = requireAccount(world), proof = world.pending; world.pending = null;
-      if (!proof || proof.action !== 'unlink' || proof.id !== body.transaction || proof.accountId !== account.id || proof.sessionId !== world.session.id || proof.expires <= now) fail('Unlink confirmation expired. Start again.');
-      if (body.username !== account.email || !passwordOK(body.password)) fail('Use this account’s demo password to confirm unlinking.');
-      account.identities = []; world.setup = null;
-      if (world.session.method === 'passli') {world.session = null;world.screen='login';}
-      else world.screen='settings';
-      return 'Passli unlinked. Your account and projects are preserved; use your password to sign in.';
+      if(world.screen!=='unlink-confirm')fail('Confirm the named account before unlinking.');
+      const account=requireAccount(world),subject=account.identities[0],bindingId=account.linkIds?.[subject];
+      if(!subject||!bindingId)fail('No current Passli binding exists.');
+      pending(world,'unlink',now,{accountId:account.id,sessionId:world.session.id,subject,bindingId});return '';
     }
     case 'suspend': requireAccount(world);if (world.session.method !== 'passli') fail('Sign in using Passli first.');world.providerStatus='suspended';world.pending=null;world.screen='suspended';return '';
     case 'resume-start': if (!world.session || world.session.method !== 'passli' || world.providerStatus !== 'suspended') fail('No suspended session to resume.');pending(world,'resume',now,{subject:world.session.subject,sessionId:world.session.id});return '';

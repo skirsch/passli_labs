@@ -1,6 +1,6 @@
 # Executable guide
 
-Version: 1
+Version: 2
 Updated: 2026-10-24
 
 | Command | Purpose | Inputs | Outputs |
@@ -14,3 +14,7 @@ For PowerShell: `$env:DEMO_MODE='walkthrough'; npm start`.
 Keep `demo/data/` and deployment credentials out of Git. The edge worker requires
 a configured HTTPS `DEMO_UPSTREAM` and a route scoped to the demo hostname.
 See the [demo implementation notes](../demo/README.md) for exact configuration.
+
+`demo/unlink.mjs` is the dependency-free backend verifier for operation-bound
+LoA 4 unlink proofs; `npm test` includes both-signature and exact-binding denial
+cases. It is imported by `demo/passli.mjs`, not executed directly.

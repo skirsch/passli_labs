@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 3
+Version: 4
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -27,9 +27,9 @@ the live demo. Preserve the compact sign-in page approved in the button mockup.
 7. Session lifecycle: local logout, suspension with protected access denied,
    same-identity resume, wrong-identity rejection, termination and expiry.
 
-Unlink safeguards remain proposed in the governing specification. A demo may
-illustrate a candidate policy, but must identify that policy in its reference
-documentation rather than presenting it as finalized Passli protocol policy.
+Unlink requires a fresh Passli unlink signature at LoA 4 or higher, bound to
+the exact site/account/binding/identity/challenge. It never asks for old site
+credentials; cancellation or verification failure retains the link.
 
 ## Implementation boundary
 

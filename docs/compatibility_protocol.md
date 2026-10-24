@@ -1,6 +1,6 @@
 # Direct/FedCM compatibility reference
 
-Version: 2
+Version: 3
 Updated: 2026-10-24
 Status: Existing demonstration profile; not the protected threshold-login protocol.
 
@@ -150,3 +150,44 @@ existing-account/new-account flow in the [site specification](Passli_site_integr
 Keep setup sessions restricted, bindings durable and atomic, authentication
 cookies secure, session IDs rotated and mutation endpoints CSRF-protected.
 The reference's in-memory maps are unsuitable as a production session store.
+
+
+## First-class signed unlink request
+
+An ordinary Direct login token cannot authorize unlink. Use the same registered
+Direct callback/code exchange with `operation=unlink`, `required_loa=4`,
+`request_pii=false`, and `unlink_subject`, `unlink_account`, `unlink_binding`.
+These three target fields are canonical 32-byte base64url values: the bound
+site-identity public key, opaque local account ID and current random binding ID.
+Generate and retain a fresh nonce/state/PKCE verifier on the site server. The
+site session must select the account and current binding; never accept a target
+account from the page. Passli's operation floor remains 4 even if the caller
+requests LoA 1, and higher configured signing/device policy still applies.
+
+The browser and secure-phone approval identify this as `unlink`. The phone's
+signed approval JSON includes the exact target and nonce. No login grace is
+reused. After fresh secure approval, Passli returns a one-use authorization code
+whose exchanged signed token has `kind=passli:unlink:v1`, `operation=unlink`,
+`iss`, `aud`, `sub`, `nonce`, `requiredLoA`, `achievedLoA`, `iat`, `exp`, and
+`unlinkProof`. It does not issue a login grant/session for unlink.
+
+`unlinkProof` contains the site-specific Ed25519 `publicKey`, `keyId`,
+`userSignature`, `hash`, `hashAlgorithm=SHA-256`,
+`encoding=passli-sorted-json-utf8-v1`,
+`signatureAlgorithm=Ed25519-over-SHA256`, and `fields`. The fields are exactly:
+`domain=passli:unlink:v1`, `operation=unlink`, `audience` (registered HTTPS site
+origin), `subject`, `accountId`, `bindingId`, `nonce`, `requiredLoA`,
+`achievedLoA`, `issuedAt`, `expiresAt`. Times are Unix seconds; the proof lasts
+at most 60 seconds and never beyond the approval deadline. Canonical JSON sorts
+object keys recursively, preserves array order, omits undefined object values,
+and uses UTF-8. Hash these bytes with SHA-256; verify the user signature over the
+32 hash bytes and pin its public key's `x` to the existing linked subject.
+
+Verify the provider JWT signature using its trusted discovery JWKS and fixed
+issuer/audience, then verify the entire embedded user proof, its exact target and
+nonce, operation/domain, issuance/expiry, and matching required/achieved LoA >= 4.
+Use the standalone [demo verifier](../demo/unlink.mjs) as an implementation
+reference. Consume the server-held transaction once with atomic exact-binding
+removal and dependent-session invalidation. A generic signature, login token,
+wrong identity, stale binding, replay, expiry or cancellation changes no binding.
+The site's old password is never requested for this operation.

@@ -25,7 +25,7 @@ async function fixture(t,{database=':memory:',mode='walkthrough',provider,cleanu
       async action(action,extra={}) {return request('/api/action',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Demo-CSRF':state.csrf},body:JSON.stringify({action,transaction:state.transaction,...extra})});},
       async ok(action,extra={}){const r=await this.action(action,extra);assert.equal(r.response.status,200,JSON.stringify(r.body));return r.body;},
       callback(state,code='valid-code'){return request('/auth/passli/callback?'+new URLSearchParams({state,code}),{redirect:'manual'}).catch(error=>{throw error;});},
-      approve(identity='demo-alice'){return this.ok('approve',{identity});},
+      approve(identity='demo-alice'){return this.ok('approve',{identity,achievedLoA:4});},
       login(){return this.ok('login',{username:'avery@example.test',password:'demo'});}
     };
   }
@@ -44,7 +44,7 @@ test('first-use linking preserves account and returning login bypasses chooser',
 
 test('real mode uses provider callbacks, persists cross-browser bindings and rejects simulated approval',async t=>{
   const identity='x'.repeat(43);let providerStatus='active',calls=0;
-  const provider={begin(proof){proof.state='state-'+proof.id;return 'https://provider.example/login?state='+proof.state;},async complete(){calls++;return {identity,association:{subject:identity,grantId:'grant',sessionId:'provider-session',clientId:'demo'}};},async status(){return providerStatus;}};
+  const provider={begin(proof){proof.state='state-'+proof.id;return 'https://provider.example/login?state='+proof.state;},async complete(){calls++;return {identity,unlinkVerified:true,association:{subject:identity,grantId:'grant',sessionId:'provider-session',clientId:'demo'}};},async status(){return providerStatus;}};
   const {c,client}=await fixture(t,{mode:'real',provider});
   assert.equal(c.state.mode,'real');assert.equal(c.state.installed,false);
   assert.equal((await c.action('approve',{identity:'demo-alice'})).response.status,403);
@@ -58,8 +58,8 @@ test('real mode uses provider callbacks, persists cross-browser bindings and rej
   assert.equal(other.state.screen,'home');assert.equal((await other.request('/api/private')).body.accountId,account);
   providerStatus='suspended';await other.init();assert.equal(other.state.screen,'suspended');assert.equal((await other.request('/api/private')).response.status,401);
   providerStatus='active';await other.init();assert.equal(other.state.screen,'home');
-  await other.ok('settings');await other.ok('unlink-start');await other.ok('unlink',{username:'avery@example.test',password:'demo'});
-  await complete(other,'passli-start');assert.equal(other.state.screen,'setup');assert.equal(calls,4);
+  await other.ok('settings');await other.ok('unlink-start');await complete(other,'unlink');
+  await complete(other,'passli-start');assert.equal(other.state.screen,'setup');assert.equal(calls,5);
 });
 test('cancelled setup reappears; registration binds a separate account atomically',async t=>{
   const {c}=await fixture(t);await c.login();const original=(await c.request('/api/private')).body.accountId;await c.ok('logout');
@@ -80,7 +80,7 @@ test('settings linking rejects an identity already bound elsewhere',async t=>{
 test('unlink preserves account, invalidates Passli session and never restores binding automatically',async t=>{
   const {c}=await fixture(t);await c.login();const before=(await c.request('/api/private')).body;
   await c.ok('settings-link');await c.ok('confirm-link');await c.approve();await c.ok('logout');await c.ok('passli-start');await c.approve();
-  await c.ok('settings');await c.ok('unlink-start');await c.ok('unlink',{username:'avery@example.test',password:'demo'});
+  await c.ok('settings');await c.ok('unlink-start');await c.ok('unlink');await c.approve();
   assert.equal(c.state.screen,'login');assert.equal((await c.request('/api/private')).response.status,401);
   await c.login();assert.deepEqual((await c.request('/api/private')).body,before);assert.equal(c.state.account.linked,false);
   await c.ok('logout');await c.ok('passli-start');await c.approve();assert.equal(c.state.screen,'setup');
@@ -134,7 +134,7 @@ test('any email with demo can link and unlink; invalid credentials create nothin
   assert.equal(c.state.account.email,'any.person@example.org');assert.equal(c.state.screen,'link-confirm');
   const before=(await c.request('/api/private')).body;
   await c.ok('confirm-link');await c.approve();assert.equal(c.state.account.linked,true);
-  await c.ok('unlink-start');await c.ok('unlink',{username:'any.person@example.org',password:'demo'});
+  await c.ok('unlink-start');await c.ok('unlink');await c.approve();
   assert.equal(c.state.account.linked,false);assert.deepEqual((await c.request('/api/private')).body,before);
 });
 
@@ -160,4 +160,17 @@ test('idle cleanup deletes registered accounts and real bindings; returning iden
   const rows=db.prepare('SELECT state FROM visitors').all();assert.ok(rows.every(row=>!row.state.includes('Jordan Morgan')&&!row.state.includes(identity)));db.close();
   assert.equal((await c.request('/api/private')).response.status,401);await c.init();assert.equal(c.state.account,null);assert.equal(c.state.demoAccounts.length,0);
   const other=f.client();await other.init();await other.ok('installation',{installed:true});await complete(other,'passli-start');assert.equal(other.state.screen,'setup');
+});
+
+
+test('unlink has no password bypass and needs a fresh same-identity LoA4 proof; cancellation and expiry preserve binding',async t=>{
+ const f=await fixture(t),{c}=f;await c.login();await c.ok('settings-link');await c.ok('confirm-link');await c.approve();
+ assert.equal((await c.action('unlink',{username:'avery@example.test',password:'demo'})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink-start');await c.ok('unlink');assert.equal(c.state.screen,'approval');
+ assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:3})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink-start');await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-bob',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink-start');await c.ok('unlink');const old=c.state.transaction;await c.ok('cancel');assert.equal(c.state.account.linked,true);
+ await c.ok('unlink-start');await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4,transaction:old})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink-start');await c.ok('unlink');f.advance(61000);assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink-start');await c.ok('unlink');await c.approve();assert.equal(c.state.account.linked,false);
 });

@@ -81,12 +81,12 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
           const original=load.get(owner.visitor);if(!original)throw Error('Linked account is unavailable.');
           world=JSON.parse(original.state);id=owner.visitor;world.session=null;world.setup=null;world.pending=null;
         } else if(owner && (owner.visitor!==id || owner.account!==proof.accountId)) throw Error('This Passli identity is already linked to another account.');
-        if(['link','register'].includes(proof.action)) {
+        if(['link','register','unlink'].includes(proof.action)) {
           const current=load.get(id);if(!current)throw Error('Site transaction is unavailable.');world=JSON.parse(current.state);expire(world,now());
-          if(proof.action==='link'&&world.session?.id!==proof.sessionId)throw Error('Site account changed during linking.');
+          if(['link','unlink'].includes(proof.action)&&world.session?.id!==proof.sessionId)throw Error('Site account changed during linking.');
         }
         world.pending=proof;
-        act(world,{action:'approve',transaction:proof.id,identity:result.identity},now(),{verifiedIdentity:result.identity});
+        act(world,{action:'approve',transaction:proof.id,identity:result.identity},now(),{verifiedIdentity:result.identity,verifiedUnlink:result.unlinkVerified===true});
         if(world.session?.method==='passli')world.providerAssociation=result.association;
         db.exec('BEGIN IMMEDIATE');try{rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
         return redirect();

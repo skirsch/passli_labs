@@ -1,3 +1,4 @@
+import {canonical,verifyUnlink} from '../unlink.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,sign,createPublicKey,createHash} from 'node:crypto';
@@ -26,4 +27,22 @@ test('Direct adapter binds S256 PKCE, exact redirect, nonce and live grant confi
   assert.equal(url.searchParams.get('code_challenge'),createHash('sha256').update(proof.verifier).digest('base64url'));
   const result=await provider.complete(proof,'one-use-code');assert.equal(result.identity,base.sub);assert.equal(calls.length,3);assert.equal(calls[2].body.complete,true);
   assert.equal(calls[2].body.subject,base.sub);assert.equal(calls[0].body.verifier,proof.verifier);
+});
+
+
+test('unlink verifier requires both signatures, operation and exact binding at LoA4; adapter never treats login as unlink',async()=>{
+ const user=generateKeyPairSync('ed25519'),publicKey=user.publicKey.export({format:'jwk'}),origin='https://demo.passli.app';
+ const proof={action:'unlink',subject:publicKey.x,accountId:Buffer.alloc(32,2).toString('base64url'),bindingId:Buffer.alloc(32,3).toString('base64url')};
+ let supplied;
+ const provider=createPassli({origin,request:async url=>url.endsWith('/jwks.json')?jwks:{token:supplied}});
+ const url=new URL(provider.begin(proof));assert.equal(url.searchParams.get('operation'),'unlink');assert.equal(url.searchParams.get('required_loa'),'4');assert.equal(url.searchParams.get('unlink_subject'),proof.subject);
+ const now=Math.floor(Date.now()/1000),fields={domain:'passli:unlink:v1',operation:'unlink',audience:origin,subject:proof.subject,accountId:proof.accountId,bindingId:proof.bindingId,nonce:proof.nonce,requiredLoA:4,achievedLoA:4,issuedAt:now,expiresAt:now+60};
+ const hash=createHash('sha256').update(canonical(fields)).digest('hex'),unlinkProof={fields,hash,hashAlgorithm:'SHA-256',encoding:'passli-sorted-json-utf8-v1',signatureAlgorithm:'Ed25519-over-SHA256',publicKey,keyId:createHash('sha256').update(canonical(publicKey)).digest('hex'),userSignature:sign(null,Buffer.from(hash,'hex'),user.privateKey).toString('base64url')};
+ const claims={kind:'passli:unlink:v1',operation:'unlink',sub:proof.subject,nonce:proof.nonce,requiredLoA:4,achievedLoA:4,iat:now,exp:now+60,unlinkProof};
+ supplied=token(claims);assert.equal((await provider.complete(proof,'code')).unlinkVerified,true);
+ assert.throws(()=>verifyAssertion(supplied,jwks,{...options,nonce:proof.nonce}));
+ const expected={clientId:'demo',origin,subject:proof.subject,accountId:proof.accountId,bindingId:proof.bindingId,nonce:proof.nonce};
+ for(const [field,value]of Object.entries({clientId:'rp1',origin:'https://evil.test',subject:base.sub,accountId:'other',bindingId:'replacement',nonce:'wrong'}))assert.throws(()=>verifyUnlink(supplied,jwks,{...expected,[field]:value}));
+ for(const change of [{kind:'login'},{requiredLoA:3,achievedLoA:3},{unlinkProof:{...unlinkProof,userSignature:'forged'}},{unlinkProof:{...unlinkProof,fields:{...fields,operation:'login'}}},{exp:now-1}])assert.throws(()=>verifyUnlink(token({...claims,...change}),jwks,expected));
+ supplied=token({nonce:proof.nonce});await assert.rejects(provider.complete(proof,'login-code'));
 });

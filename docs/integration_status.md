@@ -1,6 +1,6 @@
 # Integration readiness
 
-Version: 2
+Version: 3
 Updated: 2026-10-24
 
 ## What this repository provides
@@ -22,7 +22,7 @@ API denial after provider lock. Physical browser/phone acceptance is separate.
 | Installed app/PWA detection | Requires supported platform APIs and verified app/site association; universal detection is unavailable |
 | Existing-site account lookup, explicit linking and new-account choice | Implemented in the demo backend; replace its fictional local authentication with the target site's real login/MFA |
 | Suspension/resume and protected API enforcement | Demo backend checks provider status; local tests cover wrong-account resume and unchanged deadlines; live provider-lock denial verified |
-| Unlink Passli | Implemented in the demo with candidate reauthentication, alternative-login and session-invalidation safeguards; final general policy remains open |
+| Unlink Passli | Requires a fresh first-class Passli unlink request and verified site-identity signature plus provider attestation at LoA 4 or higher; no old site credentials; exact-binding removal invalidates dependent sessions |
 | Protected threshold login | Target defined; final protocol envelope, implementation and migration are pending |
 | Public hosted login script / universal SDK | Not supplied by this repository |
 

@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 4
+Version: 5
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -194,24 +194,32 @@ account does not authorize later automatic account merging.
 ## 5. Unlink Passli
 
 Provide **Unlink Passli** in the linked account's login/security settings.
-It removes the local account association, preserving both accounts, local data,
-roles and entitlements, and other sites' associations. A later verified Passli
-login shows the chooser if the identity remains unbound. Never automatically
-restore the old binding. Passli grant revocation is separate from removing the
-site's binding; logout is also a separate operation.
+**Approved requirement, 2026-10-24:** unlinking requires a fresh Passli `unlink`
+request and a verified user signature at **LoA 4 or higher**. Do not request the
+site's old password or other local credentials as unlink authorization. A local
+session, ordinary login assertion, remembered assurance or lower-LoA approval is
+insufficient. Passli enforces a non-downgradable operation minimum of 4; higher
+site/device/account policy still applies. No cached login grace authorizes unlink.
 
-The capability is confirmed. These details remain proposed for review:
+The site backend creates a one-use challenge for the authenticated local account
+and exact current Passli binding. The signed payload must contain operation
+`unlink`, domain `passli:unlink:v1`, registered relying origin/audience, linked
+site subject, opaque local account ID, current binding ID, nonce and bounded
+issuance/expiry. Verify both the site-identity user signature and Passli's signed
+assurance attestation, including required/achieved LoA >= 4, against the exact
+server-held request. Reject wrong account, identity, binding, origin, operation,
+nonce, expired/replayed proofs and incomplete/cancelled approvals. Never accept
+browser-provided assurance or a generic text signature as an unlink proof.
 
-- Recent local-account authentication/MFA and explicit confirmation.
-- Requiring another usable verified login method before unlinking, including
-  accounts created using only Passli, to avoid lockout.
-- Exact-binding, CSRF-protected atomic removal with safe retry behavior.
-- Invalidating sessions established through the removed binding, including
-  suspended sessions and pending transactions that could restore the binding;
-  independently authenticated sessions follow local policy.
-
-Do not present these proposals as approved decisions. Resolve the outstanding
-unlink behavior before declaring unlink implementation ready for release.
+Only after successful verification, atomically remove that binding and consume
+the challenge. Invalidate sessions established through it, including suspended
+sessions, and pending transactions that could restore it. Independently
+established sessions follow site policy. Cancel/failure leaves the binding intact;
+retries cannot remove a replacement binding. Preserve both accounts, local data,
+roles and other sites' associations. A later unbound login shows setup again;
+relinking always needs a fresh explicit link flow. Grant revocation and logout
+remain separate operations. The temporary demo's automatic account expiry is
+account-data cleanup, not authorization to manually unlink a retained account.
 
 ## 6. Suspend, resume and terminate
 
@@ -274,7 +282,7 @@ Verify the real supported flow and report evidence for:
   identity-bound linking. Email matches never create associations.
 - New registration: explicit choice, normal validation, atomic binding,
   duplicate/collision handling, concurrent tabs, retry and rollback behavior.
-- Unlink capability and its approved safeguards; no automatic reassociation.
+- LoA 4 signed unlink enforcement and its approved safeguards; no automatic reassociation.
 - Suspension blocks direct protected API requests as well as pages. Same-account
   resume preserves the account; wrong-account resume, termination, revocation,
   expiry, local disablement and provider failure deny access.
@@ -308,6 +316,6 @@ implementing a live integration. Do not assume access to internal source.
 Still to supply/finalize: public Passli login discovery adapter and supported
 browser matrix; verified app/site installation associations where supported;
 the target site's client registration and supported protocol configuration;
-remaining unlink decisions; protected-native protocol implementation/migration
+the approved LoA 4 unlink contract; protected-native protocol implementation/migration
 when that profile is requested. This document defines requirements without
 claiming these dependencies have shipped.

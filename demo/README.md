@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 3
+Version: 4
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -64,8 +64,9 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
    another browser after real proof of that identity.
 4. **Link from settings:** ordinary fictional Northstar login → Settings →
    Link Passli → named confirmation → fresh approval.
-5. **Unlink:** Settings → Unlink Passli → confirm with the fictional account's
-   alternative password. Projects remain; Passli-established sessions end. A
+5. **Unlink:** Settings → Unlink Passli → confirm the named account → fresh
+   Passli unlink signature at LoA 4 or higher. No old site password is requested.
+   Projects remain; Passli-established sessions end. A
    later unbound Passli login returns to the chooser.
 6. **Suspension:** change your real Passli session state under its supported
    policy, then return to Northstar. Protected APIs must deny access while
@@ -100,10 +101,12 @@ existing workspace. Authentication rotates the opaque cookie and ends that
 workspace's prior browser session. This demo has one active site session per
 workspace; production sites should use their normal per-device session store.
 
-The demonstration unlink policy requires an alternative local login, explicit
-confirmation and reauthentication, preserves account data and invalidates a
-Passli-established site session. These illustrate the proposed safeguards in
-the integration guide; they do not finalize Passli-wide unlink policy.
+Unlink requires a fresh first-class Passli `unlink` request, a site-identity user
+signature and a verified provider assurance attestation at LoA 4 or higher. The
+site verifies operation, origin, account, exact binding, subject, nonce and expiry
+before atomic removal. Ordinary login tokens and old site credentials cannot
+authorize unlink. Cancellation/failure retains the link; dependent site sessions
+end only after verified unlink. See `unlink.mjs` and the compatibility reference.
 
 Real installation discovery supports the current Passli extension's EIP-6963
 announcement/provider markers on fresh page loads, without requesting accounts.

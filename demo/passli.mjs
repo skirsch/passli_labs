@@ -1,3 +1,4 @@
+import {verifyUnlink} from './unlink.mjs';
 import https from 'node:https';
 import {createHash,createPublicKey,verify} from 'node:crypto';
 import {random} from './model.mjs';
@@ -21,6 +22,7 @@ export function verifyAssertion(token,jwks,{issuer,clientId,nonce,requiredLoA=1,
   if(claims.iss!==issuer||claims.aud!==clientId||claims.nonce!==nonce||typeof claims.sub!=='string'||Buffer.from(claims.sub,'base64url').length!==32||Buffer.from(claims.sub,'base64url').toString('base64url')!==claims.sub)throw Error('Passli assertion does not match this login.');
   if(!Number.isInteger(claims.exp)||!Number.isInteger(claims.iat)||claims.exp<=now||claims.iat>now+30||claims.exp-claims.iat<=0||claims.exp-claims.iat>3600)throw Error('Passli assertion expired.');
   if(!Number.isInteger(claims.requiredLoA)||!Number.isInteger(claims.achievedLoA)||claims.requiredLoA<requiredLoA||claims.achievedLoA<claims.requiredLoA||claims.achievedLoA>6)throw Error('Passli assurance is insufficient.');
+  if(claims.operation==='unlink'||claims.kind==='passli:unlink:v1')throw Error('An unlink proof cannot authorize login.');
   const capability=value=>typeof value==='string'&&/^(?:[A-Za-z0-9_-]{43}|[a-z0-9-]{1,32}\.[A-Za-z0-9_-]{39,220}\.[A-Za-z0-9_-]{43})$/.test(value);
   if(!capability(claims.gid)||!capability(claims.sid))throw Error('Missing Passli grant or session.');
   return claims;
@@ -30,12 +32,13 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
   return {
     begin(proof) {
       proof.state=random();proof.nonce=random();proof.verifier=random();
-      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:'1',request_pii:'false'});
+      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':'1',request_pii:'false',...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
       return issuer+'/direct/login?'+parameters;
     },
     async complete(proof,code) {
       const {token}=await request(issuer+'/direct/token',{method:'POST',body:{code,clientId,redirect,verifier:proof.verifier}});
       const jwks=await request(issuer+'/.well-known/jwks.json');
+      if(proof.action==='unlink'){const fields=verifyUnlink(token,jwks,{clientId,nonce:proof.nonce,origin,subject:proof.subject,accountId:proof.accountId,bindingId:proof.bindingId});return {identity:fields.subject,unlinkVerified:true};}
       const claims=verifyAssertion(token,jwks,{issuer,clientId,nonce:proof.nonce});
       const association={sessionId:claims.sid,clientId,subject:claims.sub,grantId:claims.gid};
       const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:{...association,complete:true},timeout:3000});

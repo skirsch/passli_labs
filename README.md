@@ -16,7 +16,8 @@ explain which components to replace with your site's real account authentication
 
 For the demo, enter **any email address** with password **`demo`** to represent
 an existing account. Demo accounts and their Passli links are forgotten **30 minutes
-after creation**; signing in again does not extend that time.
+after creation**; signing in again does not extend that time. Manual unlinking
+requires a fresh Passli **LoA 4 signature**, with no old site password prompt.
 
 <img src="assets/icons/passli-mark.svg" alt="Passli" width="80" height="80">
 
@@ -40,8 +41,7 @@ To hand this to an implementation assistant:
 This is an integration reference, working demo and asset kit, not a universal
 production login SDK. The live demo uses the Direct provider-token compatibility
 profile. It does not implement the unfinished protected threshold-login target.
-Universal app/PWA discovery, registration of additional sites and final unlink
-policy still require work. See the [readiness document](docs/integration_status.md).
+Universal app/PWA discovery and onboarding of additional sites still require work. See the [readiness document](docs/integration_status.md).
 
 The demo shows the Passli login button after detecting the current extension.
 Without supported installation evidence, normal fictional site sign-in remains

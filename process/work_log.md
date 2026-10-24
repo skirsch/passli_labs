@@ -101,3 +101,29 @@
   no physical-phone acceptance or 30-minute wall-clock wait is claimed.
 - Next steps: none for this change; real Passli account/provider history remains
   outside Northstar's temporary-account cleanup.
+
+
+## 2026-10-24 — Mandatory LoA 4 signed unlink (demo 0.1.6)
+
+- What we did: made fresh operation-bound Passli unlink approval at LoA 4 or higher
+  normative in the site spec and compatibility guide. Removed old-credential
+  unlink forms and the password-only server action. Added a standalone verifier
+  for the site-identity Ed25519 signature plus provider assurance attestation,
+  exact account/binding/subject/origin/nonce/expiry checks and one-use removal.
+  The walkthrough labels its separate unlink approval as simulated LoA 4.
+- Command / executable: `node --test demo/test/flows.test.mjs demo/test/passli.test.mjs`;
+  same 16 tests in the pinned production Node image; public browser walkthrough;
+  dedicated native-signature synthetic HTTPS acceptance against Passli API578;
+  public health/source verification and `git diff --check`.
+- Outputs: demo 0.1.6, `demo/unlink.mjs`, site spec version 5, compatibility guide
+  version 3 and updated README/demo docs. Passli API578 is deployed on all five
+  hosts; provider implementation and operator receipts live in the private repo.
+- Results: all 16 demo tests passed. Live canary and final acceptance verified the
+  secure phone challenge binds the unlink target, provider completion fails before
+  secure proof, the site verifies the signature before unlink, the local account
+  survives, dependent sessions end and later login never restores the old link.
+  Lower LoA, wrong identities/targets, replay, cancellation and expiry fail closed
+  in regression tests. All five provider gates and final canonical backup barrier
+  passed. Physical phone/browser acceptance remains separate from synthetic proof.
+- Next steps: none for this requested change. Automatic 30-minute demo account
+  expiry remains account-data cleanup, distinct from manual unlink authorization.
