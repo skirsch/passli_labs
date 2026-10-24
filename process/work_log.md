@@ -1,5 +1,22 @@
 # Work log
 
+## 2026-10-24 — Site-styled sign-in page mockup
+
+- What we did: replaced the isolated button sample with a complete compact
+  sign-in page inspired by the supplied reference. Passli shares the same
+  provider-button CSS as passkey, Google and Apple; only the logo and text differ.
+  Updated asset guidance to document host-drawn buttons and context-sensitive
+  Continue with Passli wording. Asset guidance incremented to version 2.
+- Command / executable: local HTTP preview, browser screenshot/AX inspection,
+  local link checks and `git diff --check`.
+- Outputs: `examples/login-button.html`, `assets/README.md`, root README.
+- Results: preview renders the full login layout with compact 40-pixel provider
+  rows, 20-pixel icons and 44-pixel targets on touch pointers. Passli remains
+  hidden by default; `?preview=1` shows it solely for design review. Input fields
+  are read-only and controls perform no sign-in or network submission.
+- Next steps: review the page appearance; connect only supported discovery and
+  verified authentication interfaces when implementing a real site.
+
 ## 2026-10-24 — Initial public integration kit
 
 - What we did: prepared a self-contained public site integration specification,

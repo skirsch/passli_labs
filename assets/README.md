@@ -1,6 +1,6 @@
 # Passli icons and login button
 
-Version: 1
+Version: 2
 Updated: 2026-10-24
 
 These are the existing Passli product assets, copied without redesign.
@@ -18,17 +18,25 @@ These are the existing Passli product assets, copied without redesign.
 
 ## Login button
 
-Use the label **Login with Passli**, with the mark to its left. Match the site's
-typography and retain a clear border, visible keyboard focus, readable contrast
-and a target at least 44 CSS pixels high. Keep the mark square and undistorted;
-use approximately 24 pixels within a 44–48 pixel button. Do not recolor, crop
-or add effects to the mark. When adjacent text names Passli, use an empty image
+The host site draws the button with its existing HTML/CSS or UI components;
+Passli supplies the logo, not a pre-rendered button image. Use **Continue with
+Passli** alongside other “Continue with…” providers, or **Login with Passli**
+where that matches the site's login language. Keep the same width, border,
+background, typography, spacing and height as neighboring provider buttons.
+Retain visible keyboard focus and readable contrast. Aim for a 44-pixel touch
+target on touch layouts; the compact desktop reference uses 40-pixel rows.
+Keep the mark square and undistorted; use approximately 20 pixels in a compact
+provider row. Do not recolor, crop or add effects to the mark. When adjacent
+text names Passli, use an empty image
 alt attribute so screen readers do not repeat the brand name.
 
-The [HTML example](../examples/login-button.html) provides light/dark styles and
-a disabled loading treatment. It is a presentation example, with no discovery
-adapter or authentication implementation. Its controls start hidden. For local
-visual review only, append `?preview=1` to the file URL to see sample states.
+The [HTML example](../examples/login-button.html) shows a complete sign-in page
+with username/password and passkey, Google, Apple and Passli options. Its shared
+provider-button CSS makes Passli look native to the site. It is a static design
+preview, with read-only fields and no discovery or authentication implementation.
+The Passli control starts hidden. For visual review only, append `?preview=1`
+to the file URL to show it alongside the other providers. Other providers' marks
+are illustrative and do not grant rights to those brands.
 
 In an integration, show the button only after positive supported installation
 discovery in the current browser context. Pending, failed or unsupported

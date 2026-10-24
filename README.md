@@ -10,7 +10,7 @@ Public integration documentation and official icon assets for **Login with Passl
 - [Integration readiness](docs/integration_status.md): current reference behavior, missing dependencies and onboarding inputs.
 - [Direct/FedCM compatibility reference](docs/compatibility_protocol.md): request shapes and server verification responsibilities.
 - [Icons and button guidelines](assets/README.md): SVG and PNG downloads and usage rules.
-- [Button example](examples/login-button.html): accessible light/dark presentation, initially hidden until supported installation discovery succeeds.
+- [Sign-in page mockup](examples/login-button.html): compact provider buttons styled by the host site. Append `?preview=1` to show Passli in the static preview.
 
 To hand this to an implementation assistant:
 
@@ -24,7 +24,9 @@ protected threshold-login target. Public installation discovery, site onboarding
 configuration and parts of the account lifecycle still require completion or
 confirmation. See the [readiness document](docs/integration_status.md).
 
-The current button label is **Login with Passli**. Show it only after positive
+Use **Continue with Passli** alongside other provider options, or **Login with
+Passli** to match the site's wording. The host site draws the button; Passli
+supplies the logo. Show it only after positive
 Passli installation detection in the current browser context; normal site login
 must remain available. Installation signals control presentation only.
 

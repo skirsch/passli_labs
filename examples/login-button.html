@@ -1,60 +1,76 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passli login button presentation</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 32px; background: #eef2f7; color: #162033; font: 16px/1.5 system-ui, sans-serif; }
-    main { max-width: 760px; margin: auto; }
-    .samples { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
-    section { padding: 24px; border-radius: 16px; background: white; }
-    .dark { background: #151320; color: #f5f7ff; }
-    h1 { font-size: 28px; } h2 { font-size: 18px; }
-    .passli-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 10px 20px; border: 1px solid #a0aec0; border-radius: 8px; background: #fff; color: #162033; font: 600 16px/1.4 system-ui, sans-serif; cursor: pointer; }
-    .passli-button[hidden], [hidden] { display: none !important; }
-    .passli-button img { width: 24px; height: 24px; flex: none; }
-    .passli-button:hover { background: #f1f5f9; }
-    .passli-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
-    .dark .passli-button { background: #201d32; color: #f5f7ff; border-color: #74829c; }
-    .dark .passli-button:hover { background: #302b47; }
-    .dark .passli-button:focus-visible { outline-color: #74ecf2; }
-    .passli-button:disabled { cursor: default; opacity: .7; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../assets/icons/passli-mark.svg" type="image/svg+xml">
+<title>Sign-in page · Passli design preview</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; color: #1f2328; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+main { width: min(352px, calc(100% - 40px)); margin: 36px auto 28px; }
+header { text-align: center; margin-bottom: 28px; }
+.site-mark { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: #1f2328; color: white; }
+h1 { margin: 18px 0 0; font-size: 24px; line-height: 1.35; font-weight: 400; letter-spacing: -.5px; }
+label { display: block; margin-bottom: 8px; font-weight: 500; }
+input { display: block; width: 100%; height: 36px; margin-bottom: 16px; border: 1px solid #d1d9e0; border-radius: 6px; background: white; color: #59636e; padding: 5px 12px; font: inherit; box-shadow: inset 0 1px 0 #1f23280a; }
+.password-label { display: flex; align-items: baseline; justify-content: space-between; }
+.text-link { border: 0; padding: 0; background: none; color: #0969da; font: inherit; cursor: pointer; }
+.text-link:hover { text-decoration: underline; }
+button { font: inherit; }
+.sign-in, .provider { width: 100%; border-radius: 6px; cursor: pointer; }
+.sign-in { height: 36px; border: 1px solid #1f232826; color: #fff; background: #1f883d; font-weight: 600; box-shadow: 0 1px 0 #1f23281a; }
+.sign-in:hover { background: #1a7f37; }
+.divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; color: #59636e; }
+.divider::before, .divider::after { content: ""; height: 1px; background: #d1d9e0; flex: 1; }
+.providers { display: grid; gap: 8px; }
+/* The site owns the shared button style. Passli supplies only the mark. */
+.provider { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 40px; padding: 8px 14px; border: 1px solid #d1d9e0; background: #f6f8fa; color: #1f2328; font-weight: 500; line-height: 20px; box-shadow: 0 1px 0 #1f23280a; }
+.provider:hover { background: #eff2f5; border-color: #b7c0c9; }
+.provider img, .provider svg { width: 20px; height: 20px; flex: none; }
+[hidden] { display: none !important; }
+button:focus-visible, input:focus-visible { outline: 2px solid #0969da; outline-offset: 3px; }
+.create { text-align: center; margin-top: 24px; }
+.preview-note { margin: 28px 0 0; text-align: center; color: #6e7781; font-size: 12px; }
+#status { margin: 14px 0 0; text-align: center; color: #59636e; font-size: 12px; }
+#status:empty { display: none; }
+@media (max-width: 420px) { main { margin-top: 24px; } }
+@media (pointer: coarse) { .provider, .sign-in { min-height: 44px; } }
+</style>
 </head>
 <body>
-  <main>
-    <h1>Login with Passli</h1>
-    <p>Presentation reference only. This page does not discover Passli or authenticate users.</p>
-    <p id="help">The controls are hidden by default. For a visual preview, append <code>?preview=1</code> to this page's URL.</p>
-    <div class="samples">
-      <section>
-        <h2>Light surface</h2>
-        <button class="passli-button" type="button" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="24" height="24">Login with Passli</button>
-      </section>
-      <section class="dark">
-        <h2>Dark surface</h2>
-        <button class="passli-button" type="button" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="24" height="24">Login with Passli</button>
-      </section>
-      <section>
-        <h2>Attempt in progress</h2>
-        <button class="passli-button" type="button" disabled aria-busy="true" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="24" height="24">Connecting to Passli…</button>
-      </section>
-    </div>
-    <p id="status" role="status" aria-live="polite"></p>
-  </main>
-  <script>
-    // Visual preview only. Never use a query parameter as installation evidence.
-    if (new URLSearchParams(location.search).get('preview') === '1') {
-      document.getElementById('help').textContent = 'Preview mode: sample controls are visible. No authentication is connected.';
-      for (const button of document.querySelectorAll('.passli-button')) {
-        button.hidden = false;
-        if (!button.disabled) button.addEventListener('click', () => {
-          document.getElementById('status').textContent = 'Presentation only. Connect a supported discovery adapter and verified backend login flow in your application.';
-        });
-      }
-    }
-  </script>
+<main>
+<header>
+<span class="site-mark" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg></span>
+<h1>Sign in to your account</h1>
+</header>
+<!-- Static design preview: read-only fields; no credentials are sent. -->
+<form>
+<label for="username">Username or email address</label>
+<input id="username" type="text" readonly autocomplete="off" aria-describedby="preview-note">
+<div class="password-label"><label for="password">Password</label><button class="text-link" type="button">Forgot password?</button></div>
+<input id="password" type="password" readonly autocomplete="off" aria-describedby="preview-note">
+<button class="sign-in" type="button">Sign in</button>
+</form>
+<div class="divider">or</div>
+<div class="providers" aria-label="Other sign-in options">
+<button class="provider" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 2a5 5 0 0 0-3 9c-3 .9-5 3.4-5 6.5V20h13v-2.5c0-1.4-.4-2.7-1.1-3.8A6 6 0 0 1 13 4a5 5 0 0 0-4-2Z"/><path d="M18 6a3 3 0 0 0-1 5.83V15l-1 1 1 1-1 1 2 2 2-2v-6.17A3 3 0 0 0 18 6Zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"/></svg>Continue with passkey</button>
+<button class="provider" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285f4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.89-1.74 2.98-4.3 2.98-7.36Z"/><path fill="#34a853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.6 0-4.8-1.75-5.59-4.1H3.07v2.59A10 10 0 0 0 12 22Z"/><path fill="#fbbc05" d="M6.41 13.94a6 6 0 0 1 0-3.88V7.47H3.07a10 10 0 0 0 0 9.06l3.34-2.59Z"/><path fill="#ea4335" d="M12 5.96c1.47 0 2.79.51 3.82 1.51l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.93 5.47l3.34 2.59c.79-2.35 2.99-4.1 5.59-4.1Z"/></svg>Continue with Google</button>
+<button class="provider" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.1 12.5c0-2 1.6-3 1.7-3.1-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.5.8-3.1.8-.7 0-1.6-.8-2.7-.8-1.4 0-2.7.8-3.5 2-1.5 2.4-.4 6 1.1 8 .7 1 1.5 2 2.6 1.9 1-.1 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1 2.6-2 .8-1.1 1.1-2.1 1.1-2.2-.1 0-2.4-.9-2.4-3Zm-2-6c.6-.8 1.1-1.9 1-3-1 .1-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4Z"/></svg>Continue with Apple</button>
+<!-- ?preview=1 simulates visibility for this static mockup only. -->
+<button class="provider" id="passli" type="button" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="20" height="20">Continue with Passli</button>
+</div>
+<p class="create">New here? <button class="text-link" type="button">Create an account</button></p>
+<p class="preview-note" id="preview-note">Design preview · No sign-in is performed.</p>
+<p id="status" role="status" aria-live="polite"></p>
+</main>
+<script>
+// Demonstration only; this is not installation detection.
+if (new URLSearchParams(location.search).get('preview') === '1') document.getElementById('passli').hidden = false;
+document.querySelector('form').addEventListener('submit', event => event.preventDefault());
+for (const button of document.querySelectorAll('button')) button.addEventListener('click', () => {
+  document.getElementById('status').textContent = 'Design preview only. No sign-in is performed.';
+});
+</script>
 </body>
 </html>
