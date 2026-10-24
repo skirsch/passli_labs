@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passli login button presentation</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px; background: #eef2f7; color: #162033; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 760px; margin: auto; }
+    .samples { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    section { padding: 24px; border-radius: 16px; background: white; }
+    .dark { background: #151320; color: #f5f7ff; }
+    h1 { font-size: 28px; } h2 { font-size: 18px; }
+    .passli-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 10px 20px; border: 1px solid #a0aec0; border-radius: 8px; background: #fff; color: #162033; font: 600 16px/1.4 system-ui, sans-serif; cursor: pointer; }
+    .passli-button[hidden], [hidden] { display: none !important; }
+    .passli-button img { width: 24px; height: 24px; flex: none; }
+    .passli-button:hover { background: #f1f5f9; }
+    .passli-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
+    .dark .passli-button { background: #201d32; color: #f5f7ff; border-color: #74829c; }
+    .dark .passli-button:hover { background: #302b47; }
+    .dark .passli-button:focus-visible { outline-color: #74ecf2; }
+    .passli-button:disabled { cursor: default; opacity: .7; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Login with Passli</h1>
+    <p>Presentation reference only. This page does not discover Passli or authenticate users.</p>
+    <p id="help">The controls are hidden by default. For a visual preview, append <code>?preview=1</code> to this page's URL.</p>
+    <div class="samples">
+      <section>
+        <h2>Light surface</h2>
+        <button class="passli-button" type="button" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="24" height="24">Login with Passli</button>
+      </section>
+      <section class="dark">
+        <h2>Dark surface</h2>
+        <button class="passli-button" type="button" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="24" height="24">Login with Passli</button>
+      </section>
+      <section>
+        <h2>Attempt in progress</h2>
+        <button class="passli-button" type="button" disabled aria-busy="true" hidden><img src="../assets/icons/passli-mark.svg" alt="" width="24" height="24">Connecting to Passli…</button>
+      </section>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    // Visual preview only. Never use a query parameter as installation evidence.
+    if (new URLSearchParams(location.search).get('preview') === '1') {
+      document.getElementById('help').textContent = 'Preview mode: sample controls are visible. No authentication is connected.';
+      for (const button of document.querySelectorAll('.passli-button')) {
+        button.hidden = false;
+        if (!button.disabled) button.addEventListener('click', () => {
+          document.getElementById('status').textContent = 'Presentation only. Connect a supported discovery adapter and verified backend login flow in your application.';
+        });
+      }
+    }
+  </script>
+</body>
+</html>
