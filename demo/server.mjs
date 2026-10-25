@@ -132,12 +132,12 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       persist();
     }
     if (path==='/api/state') {const message=world.message;delete world.message;persist();return json(200,{...view(world),message});}
-    if (path==='/api/private') {persist();const account=authorizedAccount(world);return account?json(200,{accountId:account.id,projects:['Website refresh','Autumn launch','Personal notes']}):json(401,{error:'Current site authorization is required.'});}
+    if (path==='/api/private') {persist();const account=authorizedAccount(world);return account?json(200,{accountId:account.id,notes:account.notes||'',projects:['Website refresh','Autumn launch','Personal notes']}):json(401,{error:'Current site authorization is required.'});}
     if (req.headers.origin!==origin || req.headers['x-demo-csrf']!==world.csrf || !String(req.headers['content-type']).startsWith('application/json')) return json(403,{error:'Invalid request origin or CSRF proof.'});
     const rate=rates.get(id)||{count:0,until:now()+60000};rates.set(id,rate);if (++rate.count>120) return json(429,{error:'Too many demo actions. Wait a minute.'});
     let text='';
     try {
-      for await (const chunk of req) {text+=chunk;if (Buffer.byteLength(text)>4096) throw Object.assign(Error('Request too large.'),{status:413});}
+      for await (const chunk of req) {text+=chunk;if (Buffer.byteLength(text)>16384) throw Object.assign(Error('Request too large.'),{status:413});}
       const body=JSON.parse(text);
       if (!body || Array.isArray(body) || typeof body.action!=='string') throw Object.assign(Error('Invalid action.'),{status:400});
       // Re-read after async body input: a concurrent tab may have consumed proof.

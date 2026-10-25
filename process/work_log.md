@@ -209,3 +209,12 @@
 - Outputs: web712 on all five origins; 149 export files verified; 94 CDN checks; release process/releases/web712_pii_values.md. Demo 0.1.10 and API580 unchanged. No native/Metro release.
 - Results: browser shows Full name / Birth date / Birth place and actual approved full-name/contact values. Public bundle bytes/hash verified; API containers unchanged. Isolated source excludes concurrent tag popup/manager edits and preserves their workspace changes. An initial full-tree gate hit concurrent import changes; only the isolated successful gate/export was published. Corrected Windows line-ending serialization in follow-up source commit; code semantics unchanged.
 - Next steps: reload Passli and restart signup for fresh web712 UI; physical phone acceptance remains separate. Server-rendered permission pages cannot show decrypted private values; readable review is on the authorized device.
+
+
+## 2026-10-24 - Account notes and returning-login context (demo 0.1.11)
+
+- What we did: added an authenticated home-page Notes section, saved per Northstar account and restored on returning login, including linked Passli login across browsers. Notes are limited to 2,000 characters, escaped as text, isolated between accounts, and bound to the active account/session. Unsaved drafts stay only in page memory.
+- Command / executable: node --test demo/test/flows.test.mjs demo/test/passli.test.mjs; ignored notes011-release/deploy-demo.py; live HTTPS disposable-account persistence/isolation checks.
+- Outputs: demo 0.1.11 live; 24 tests pass locally and in the pinned deployed runtime; notes011-release/live-acceptance.json confirms returning-login persistence, other-account isolation and unchanged creation expiry. Demo README/guide version 9 and privacy notice updated.
+- Results: saving does not extend the fixed 30-minute lifetime from creation. Expiry/deletion removes notes; SQLite restart preserves unexpired notes. A rollback-container name collision briefly stopped deployment; restored the existing service, added a pre-stop collision check, and successfully deployed with a unique rollback name. No API/mobile deployment.
+- Next steps: refresh the demo. Real phone approval acceptance is separate from mocked provider coverage and live ordinary-login HTTP verification.

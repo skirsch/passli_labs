@@ -44,7 +44,7 @@ export function authorizedAccount(world) {
 export function publicState(world) {
   const account = authorizedAccount(world);
   const deletion=world.deletion&&world.accounts.find(a=>a.id===world.deletion.accountId);
-  return {mode:'walkthrough', modeLabel:'Interactive walkthrough · Simulated Passli approvals', csrf:world.csrf, installed:world.installed, screen:world.screen, sessionMethod:world.session?.method || null, setup:!!world.setup, pendingAction:world.pending?.action, transaction:world.pending?.id || null, deletion:deletion?{name:deletion.name,email:deletion.email}:null, piiRequest:world.registration?{id:world.registration.release.id}:null, demoAccounts:world.accounts.map(a=>({name:a.name,email:a.email})), account:account ? {name:account.name,email:account.email,phone:account.phone,linked:account.identities.length > 0,expiresAt:account.expiresAt} : null};
+  return {mode:'walkthrough', modeLabel:'Interactive walkthrough · Simulated Passli approvals', csrf:world.csrf, installed:world.installed, screen:world.screen, sessionMethod:world.session?.method || null, setup:!!world.setup, pendingAction:world.pending?.action, transaction:world.pending?.id || null, deletion:deletion?{name:deletion.name,email:deletion.email}:null, piiRequest:world.registration?{id:world.registration.release.id}:null, demoAccounts:world.accounts.map(a=>({name:a.name,email:a.email})), account:account ? {id:account.id,notes:account.notes||'',name:account.name,email:account.email,phone:account.phone,linked:account.identities.length > 0,expiresAt:account.expiresAt} : null};
 }
 function requireAccount(world) {
   const account = authorizedAccount(world);
@@ -91,6 +91,12 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
   expire(world, now);
   const action = body.action;
   switch (action) {
+    case 'notes-save': {
+      const account=requireAccount(world);
+      if(body.accountId!==account.id)fail('The account changed. Reload before saving your note.');
+      if(typeof body.notes!=='string'||body.notes.length>2000)fail('Enter a note of up to 2,000 characters.');
+      account.notes=body.notes;return 'Note saved.';
+    }
     case 'installation': world.installed = body.installed === true; return '';
     case 'home': requireAccount(world); world.pending = null; world.screen = 'home'; return '';
     case 'settings': requireAccount(world); world.pending = null; world.screen = 'settings'; return '';

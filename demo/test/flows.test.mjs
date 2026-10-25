@@ -32,6 +32,31 @@ async function fixture(t,{database=':memory:',mode='walkthrough',provider,cleanu
   const c=client();await c.init();return {c,client,server,advance(ms){clock+=ms;}};
 }
 
+test('notes belong to the authenticated account, survive logout, and neither change expiry nor accept stale-account writes',async t=>{
+ const f=await fixture(t),{c}=f;await c.login();const id=c.state.account.id,deadline=c.state.account.expiresAt;
+ const note='Context: <b>plain text</b>\nNext visit: resume here ✓';
+ await c.ok('notes-save',{accountId:id,notes:note});assert.equal(c.state.account.notes,note);assert.equal((await c.request('/api/private')).body.notes,note);
+ await c.ok('logout');assert.equal(c.state.account,null);assert.ok(!JSON.stringify(c.state).includes(note));assert.equal((await c.action('notes-save',{accountId:id,notes:'unauthorized'})).response.status,409);
+ await c.ok('login',{username:'other@example.test',password:'demo'});assert.equal(c.state.account.notes,'');assert.equal((await c.action('notes-save',{accountId:id,notes:'wrong account'})).response.status,409);
+ await c.ok('logout');await c.login();assert.equal(c.state.account.notes,note);
+ for(const value of [null,123,'x'.repeat(2001)])assert.equal((await c.action('notes-save',{accountId:id,notes:value})).response.status,409);
+ f.advance(29*60000);await c.ok('notes-save',{accountId:id,notes:'last saved context'});assert.equal(c.state.account.expiresAt,deadline);
+ f.advance(60000);await c.init();assert.equal(c.state.account,null);assert.equal((await c.request('/api/private')).response.status,401);
+ await c.login();assert.notEqual(c.state.account.id,id);assert.equal(c.state.account.notes,'');
+});
+
+test('real Passli restores account notes in another browser and SQLite restart; deletion removes that context',async t=>{
+ const directory=mkdtempSync(join(tmpdir(),'passli-notes-')),database=join(directory,'demo.sqlite');
+ const identity='n'.repeat(43),provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity,unlinkVerified:true,association:{subject:identity}};},async status(){return 'active';}};
+ const f=await fixture(t,{mode:'real',provider,database}),{c}=f;
+ const complete=async(who,action)=>{const result=await who.ok(action);await who.callback(new URL(result.redirect).searchParams.get('state'));await who.init();};
+ await c.login();await c.ok('notes-save',{accountId:c.state.account.id,notes:'Account context survives returning login'});await c.ok('settings');await complete(c,'settings-link');await c.ok('logout');
+ const other=f.client();await other.init();assert.equal(other.state.account,null);await other.ok('installation',{installed:true});await complete(other,'passli-start');assert.equal(other.state.account.notes,'Account context survives returning login');const cookie=other.cookie;
+ await new Promise(resolve=>f.server.close(resolve));const restored=await fixture(t,{mode:'real',provider,database});t.after(()=>rmSync(directory,{recursive:true,force:true}));const browser=restored.client(cookie);await browser.init();assert.equal(browser.state.account.notes,'Account context survives returning login');
+ await browser.ok('settings');await complete(browser,'delete-account-start');await browser.ok('delete-account-confirm');assert.equal(browser.state.account,null);
+ const db=new DatabaseSync(database);try{assert.ok(db.prepare('SELECT state FROM visitors').all().every(row=>!row.state.includes('Account context survives returning login')));}finally{db.close();}
+});
+
 test('deleting an unlinked account removes only that account, signs out, rotates the cookie and rejects replay',async t=>{
  const {c}=await fixture(t);await c.ok('login',{username:'other@example.test',password:'demo'});await c.ok('logout');await c.login();const oldCookie=c.cookie;
  assert.equal((await c.action('delete-account-confirm')).response.status,409);

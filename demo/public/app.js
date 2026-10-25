@@ -1,6 +1,7 @@
 const app = document.querySelector('#app');
 const endpoint = path => (location.pathname.startsWith('/walkthrough/') ? '/walkthrough' : '') + path;
 let state;
+let noteDraft;
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const action = (name, label, style = 'primary', extra = '') => `<button ${extra.includes('type=') ? '' : 'type="button"'} class="${style}" data-action="${name}" ${extra}>${label}</button>`;
 const cancel = () => action('cancel', 'Cancel', 'subtle cancel');
@@ -12,6 +13,7 @@ setInterval(()=>{if(state?.screen==='profile-sharing'||state?.pendingAction==='r
 
 function render() {
   const account = state.account;
+  if(!account)noteDraft=null;else if(noteDraft?.accountId!==account.id||!noteDraft.dirty)noteDraft={accountId:account.id,text:account.notes||'',dirty:false};
   clearTimeout(expiryTimer);
   if(account?.expiresAt)expiryTimer=setTimeout(()=>void refresh().catch(()=>notice('Reload to check account expiry.')),Math.max(100,account.expiresAt-Date.now()+50));
   app.className = ['home','settings'].includes(state.screen) ? 'wide' : '';
@@ -31,7 +33,7 @@ function render() {
     register: () => `${heading('Create your Northstar account', 'Passli will ask you to share your name, phone and email.')}<button type="button" class="provider" data-action="register"><img src="/passli-mark.svg" alt="" width="20" height="20">Create account with Passli</button><p class="small muted center space-top">Your account, shared information and Passli link will be forgotten 30 minutes after creation.</p>${cancel()}`,
     'profile-sharing': () => `${heading('Share your information with Northstar', 'Choose your name, phone and email in Passli. Your Northstar account will be created after you approve sharing.')}<button type="button" class="provider" data-pii-share>Open Passli to share information</button>${cancel()}`,
     approval: () => state.mode === 'real' ? `${heading('Complete your approval in Passli', 'Return here when you finish, or cancel and start again.')}${cancel()}` : `<img class="approval-mark" src="/passli-mark.svg" alt="Passli">${heading(state.pendingAction === 'unlink' ? 'Approve unlinking from Northstar' : state.pendingAction === 'link' ? 'Approve linking to Northstar' : state.pendingAction === 'register' ? 'Approve your new account' : state.pendingAction === 'resume' ? 'Resume your session' : 'Continue to Northstar', state.pendingAction === 'unlink' ? 'Simulated LoA 4 unlink approval' : 'Simulated Passli approval')}<div class="callout">This walkthrough simulates approval. It does not contact your real Passli account.</div><label for="identity">Fictional Passli identity</label><select id="identity"><option value="demo-alice">Alex’s Passli account</option><option value="demo-bob">Another Passli account</option></select>${action('approve', 'Approve in this demo')}${cancel()}`,
-    home: () => `${heading(`Welcome, ${escape(account?.name.split(' ')[0])}`, 'Your Northstar workspace')}<div class="row"><h2>Projects</h2>${action('settings', 'Account settings', 'secondary')}</div><div class="panel"><div class="record"><strong>Website refresh</strong><div class="muted small">Design review · Updated today</div></div><div class="record"><strong>Autumn launch</strong><div class="muted small">Planning · 3 tasks remaining</div></div><div class="record"><strong>Personal notes</strong><div class="muted small">Private workspace</div></div></div><p class="muted small">These sample projects belong to your Northstar account. Linking or unlinking Passli does not delete them.</p>`,
+    home: () => `${heading(`Welcome, ${escape(account?.name.split(' ')[0])}`, 'Your Northstar workspace')}<div class="row"><h2>Projects</h2>${action('settings', 'Account settings', 'secondary')}</div><div class="panel"><div class="record"><strong>Website refresh</strong><div class="muted small">Design review · Updated today</div></div><div class="record"><strong>Autumn launch</strong><div class="muted small">Planning · 3 tasks remaining</div></div><div class="record"><strong>Personal notes</strong><div class="muted small">Private workspace</div></div></div><p class="muted small">These sample projects belong to your Northstar account. Linking or unlinking Passli does not delete them.</p><section class="panel" aria-labelledby="notes-heading"><h2 id="notes-heading">Notes</h2><p class="muted small">Save a note to see your context return when you sign in to this same account again. Your note and account are forgotten 30 minutes after account creation.</p><form data-form="notes-save"><label for="notes">Your note</label><textarea id="notes" name="notes" rows="5" maxlength="2000" placeholder="Write something to remember on your next login…">${escape(noteDraft?.text)}</textarea>${action('notes-save', 'Save note', 'primary', 'type="submit"')}</form></section>`,
     settings: () => `${heading('Account settings', 'Manage how you sign in to Northstar.')}<div class="panel"><h2>${escape(account?.name)}</h2><p class="muted">${escape(account?.email)}</p><p class="muted">${escape(account?.phone)}</p></div><h2>Login & security</h2><div class="panel"><div class="row"><div><strong>Password</strong><div class="muted small">Demo password available as an alternative login.</div></div><span class="badge">Available</span></div></div><div class="panel"><div class="panel-head"><img src="/passli-mark.svg" alt=""><div><h2>Passli ${account?.linked ? '<span class="badge">Linked</span>' : ''}</h2><span class="muted small">${account?.linked ? 'Sign in to this account using Passli.' : 'Add Passli as another way to sign in.'}</span></div></div>${action(account?.linked ? 'unlink' : 'settings-link', account?.linked ? 'Unlink Passli' : 'Link Passli', account?.linked ? 'danger' : 'secondary')}</div><p class="muted small">Signing out ends this site session. Unlinking removes the login association.</p><h2>Delete account</h2><div class="panel"><p>Delete your Northstar account and its Passli linkage. Your Passli account will remain.</p>${account?.linked ? '<p class="muted small">First approve unlinking in Passli, then return here to confirm deletion.</p>' : ''}${action('delete-account-start', 'Delete my Account', 'danger')}</div>`,
     'delete-confirm': () => `${heading('Delete your Northstar account?', 'This permanently deletes this Northstar account and its data.')}<div class="callout warning"><strong>${escape(state.deletion?.name)}</strong><p>${escape(state.deletion?.email)}</p>Your Passli account will remain. Any Passli link to this Northstar account has been removed.</div>${action('delete-account-confirm', 'Delete my Account', 'danger')}${cancel()}`,
     suspended: () => `${heading('Session suspended', 'Log into the same Passli account to resume.')}<div class="callout">Your workspace is locked. Your account is still linked.</div>${action('resume-start', 'Open Passli', 'provider')}${action('logout', 'Log out of this site', 'subtle cancel')}`
@@ -52,11 +54,12 @@ function notice(message) {
 }
 async function send(name, body = {}) {
   const popup=name==='register'&&state.mode==='real'?window.open('about:blank','passli-registration','popup,width=640,height=760'):null;
-  for (const button of document.querySelectorAll('button')) button.disabled = true;
+  for (const button of document.querySelectorAll('button, textarea')) button.disabled = true;
   try {
     const response = await fetch(endpoint('/api/action'), {method:'POST', headers:{'Content-Type':'application/json','X-Demo-CSRF':state.csrf}, body:JSON.stringify({action:name, transaction:state.transaction, ...body})});
     const result = await response.json();
     state = result.state || state;
+    if(name==='notes-save'&&response.ok)noteDraft=null;
     if (response.ok && result.redirect) { if(popup){popup.location.replace(result.redirect);render();return;}location.assign(result.redirect);return; }
     if(popup)popup.close();
     render();
@@ -73,10 +76,11 @@ document.addEventListener('click', event => {
   const extra = name === 'approve' ? {identity:document.querySelector('#identity').value,achievedLoA:4} : {};
   void send(name, extra);
 });
+document.addEventListener('input',event=>{if(event.target.id==='notes'&&state.account)noteDraft={accountId:state.account.id,text:event.target.value,dirty:true};});
 document.addEventListener('submit', event => {
   event.preventDefault();
   const purpose = event.target.dataset.form;
-  void send(purpose, {username:event.target.elements.username?.value, password:event.target.elements.password?.value});
+  void send(purpose, purpose==='notes-save'?{notes:event.target.elements.notes.value,accountId:state.account?.id}:{username:event.target.elements.username?.value, password:event.target.elements.password?.value});
 });
 document.querySelector('#installation').addEventListener('change', event => void send('installation', {installed:event.target.value === 'true'}));
 let discovered = false;

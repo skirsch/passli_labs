@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 8
+Version: 9
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -80,3 +80,19 @@ account/data/bindings and end its session. A restricted 60-second confirmation
 capability may survive unlink ending a Passli session; it never grants project
 access. Cancellation/expiry preserves the account; a completed unlink stays
 unlinked. Never delete the real Passli account. Later Passli login starts setup.
+
+## Account notes and returning-login context
+
+The home page includes Notes with a Save note button (up to 2,000 characters).
+Notes are saved on the server with the authenticated Northstar account, rather
+than with a browser or login session. Signing out and returning by ordinary login
+or the same linked Passli identity restores that account's note, including from
+another browser. Different accounts keep separate notes. A save is bound to the
+current account/session and rejects a stale account ID; notes are returned only
+with current authorization. They are rendered as text, never HTML.
+
+The note is removed with account deletion or the fixed expiry 30 minutes after
+account creation. Saving, activity and repeated logins never extend this deadline.
+Idle cleanup uses the existing 15-second sweep. Unsaved edits stay in page memory
+through focus refreshes for the same account, and are cleared on logout/account
+switch. The field does not use browser local storage.

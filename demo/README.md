@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 8
+Version: 9
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -148,3 +148,19 @@ access. Cancelling this last step keeps the account, now unlinked. Deletion
 removes the selected account and shared PII, clears its bindings and session,
 and rotates the cookie/CSRF token. Other demo accounts and the real Passli
 account remain. A later Passli login starts unbound setup.
+
+## Account notes and returning-login context
+
+The home page includes Notes with a Save note button (up to 2,000 characters).
+Notes are saved on the server with the authenticated Northstar account, rather
+than with a browser or login session. Signing out and returning by ordinary login
+or the same linked Passli identity restores that account's note, including from
+another browser. Different accounts keep separate notes. A save is bound to the
+current account/session and rejects a stale account ID; notes are returned only
+with current authorization. They are rendered as text, never HTML.
+
+The note is removed with account deletion or the fixed expiry 30 minutes after
+account creation. Saving, activity and repeated logins never extend this deadline.
+Idle cleanup uses the existing 15-second sweep. Unsaved edits stay in page memory
+through focus refreshes for the same account, and are cleared on logout/account
+switch. The field does not use browser local storage.
