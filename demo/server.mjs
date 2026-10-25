@@ -151,7 +151,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       const message=body.action==='reset'?'Fresh fictional demo data is ready.':act(world,body,now());
       let redirect;
       if(mode==='real'&&world.screen==='approval'&&world.pending)redirect=passli.begin(world.pending);
-      db.exec('BEGIN IMMEDIATE');try{if(world.session?.id&&world.session.id!==previousSession)rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
+      db.exec('BEGIN IMMEDIATE');try{if(body.action==='delete-account-confirm'||world.session?.id&&world.session.id!==previousSession)rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
       return json(200,{state:view(world),message,redirect});
     } catch(error) {
       // A failed/replayed proof is consumed, but account changes are never partial.

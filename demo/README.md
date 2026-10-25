@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 7
+Version: 8
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -136,3 +136,15 @@ Passli login starts unbound setup again. Other accounts retain their own fixed
 deadlines. The real Passli account and provider-side history are unaffected.
 
 Registration uses `request_pii=true`. The backend verifies the signed assertion, completes the provider grant and stages the origin-bound `piiRelease` for at most its original 120-second lifetime. `/api/pii-challenge` exposes only the public challenge; `/api/pii-release` verifies the delivery token, approved fields and live provider authorization before atomic account creation and binding. CORS allows only Passli web origins. Cancellation and expiry discard the pending release. Email is profile data, never proof of an existing account or permission to merge.
+
+## Delete an account
+
+Settings includes **Delete my Account**. An unlinked account goes to a final
+explicit deletion confirmation. A linked account first approves unlinking in
+Passli at LoA 4 or higher, then returns to confirm deletion. The account remains
+until that final click. After a Passli session ends on unlink, a restricted,
+one-use confirmation capability lasts at most 60 seconds and grants no project
+access. Cancelling this last step keeps the account, now unlinked. Deletion
+removes the selected account and shared PII, clears its bindings and session,
+and rotates the cookie/CSRF token. Other demo accounts and the real Passli
+account remain. A later Passli login starts unbound setup.

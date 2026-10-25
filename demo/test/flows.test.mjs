@@ -32,6 +32,40 @@ async function fixture(t,{database=':memory:',mode='walkthrough',provider,cleanu
   const c=client();await c.init();return {c,client,server,advance(ms){clock+=ms;}};
 }
 
+test('deleting an unlinked account removes only that account, signs out, rotates the cookie and rejects replay',async t=>{
+ const {c}=await fixture(t);await c.ok('login',{username:'other@example.test',password:'demo'});await c.ok('logout');await c.login();const oldCookie=c.cookie;
+ assert.equal((await c.action('delete-account-confirm')).response.status,409);
+ await c.ok('settings');await c.ok('delete-account-start');assert.equal(c.state.screen,'delete-confirm');
+ await c.ok('cancel');assert.equal(c.state.account.email,'avery@example.test');
+ await c.ok('delete-account-start');await c.ok('delete-account-confirm');
+ assert.equal(c.state.screen,'login');assert.equal(c.state.account,null);assert.equal(c.state.demoAccounts.length,1);assert.equal(c.state.demoAccounts[0].email,'other@example.test');assert.notEqual(c.cookie,oldCookie);
+ assert.equal((await c.request('/api/private')).response.status,401);assert.equal((await c.action('delete-account-confirm')).response.status,409);
+ await c.login();assert.equal(c.state.account.linked,false);
+});
+
+test('linked deletion requires fresh LoA4 unlink, then explicit bounded deletion confirmation; cancelled approval keeps account/link',async t=>{
+ const f=await fixture(t),{c}=f;await c.login();await c.ok('settings');await c.ok('settings-link');await c.approve();
+ await c.ok('delete-account-start');assert.equal(c.state.pendingAction,'unlink');assert.equal(c.state.account.linked,true);
+ assert.equal((await c.action('delete-account-confirm',{achievedLoA:4})).response.status,409);
+ await c.ok('cancel');assert.equal(c.state.account.linked,true);
+ await c.ok('delete-account-start');assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:3})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('delete-account-start');await c.approve();assert.equal(c.state.screen,'delete-confirm');assert.equal(c.state.account.linked,false);assert.equal(c.state.demoAccounts.length,1);
+ f.advance(61000);assert.equal((await c.action('delete-account-confirm')).response.status,409);assert.equal(c.state.demoAccounts.length,1);
+ await c.ok('delete-account-start');await c.ok('delete-account-confirm');assert.equal(c.state.demoAccounts.length,0);
+});
+
+test('Passli-session deletion uses restricted confirmation after unlink and deletes persistent global binding; later identity starts unbound',async t=>{
+ const directory=mkdtempSync(join(tmpdir(),'passli-delete-')),database=join(directory,'demo.sqlite');
+ const identity='x'.repeat(43);const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity,unlinkVerified:true,association:{subject:identity}};},async status(){return 'active';}};
+ const {c,client}=await fixture(t,{mode:'real',provider,database});t.after(()=>rmSync(directory,{recursive:true,force:true}));
+ const complete=async(who,action)=>{const result=await who.ok(action);await who.callback(new URL(result.redirect).searchParams.get('state'));await who.init();};
+ await c.login();await c.ok('settings');await complete(c,'settings-link');await c.ok('logout');await c.ok('installation',{installed:true});await complete(c,'passli-start');await c.ok('settings');
+ await complete(c,'delete-account-start');assert.equal(c.state.screen,'delete-confirm');assert.equal(c.state.account,null);assert.equal(c.state.deletion.email,'avery@example.test');assert.equal((await c.request('/api/private')).response.status,401);
+ const db=new DatabaseSync(database);try{assert.equal(db.prepare('SELECT count(*) AS n FROM bindings').get().n,0);}finally{db.close();}
+ await c.ok('delete-account-confirm');assert.equal(c.state.deletion,null);assert.equal(c.state.demoAccounts.length,0);
+ const other=client();await other.init();await other.ok('installation',{installed:true});await complete(other,'passli-start');assert.equal(other.state.screen,'setup');
+});
+
 test('registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed',async t=>{
   const identity='z'.repeat(43),origin='http://127.0.0.1:18766';let authorized=true,releaseNumber=0;
   const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity,association:{subject:identity},piiRelease:{id:'release-'+(++releaseNumber),challenge:'challenge',deliveryToken:'secret-token',siteOrigin:origin,callback:origin+'/api/pii-release',expires:Date.now()+120000,fields:['name','email','phone'].map(output=>({output,recordId:output,field:output}))}};},async authorizeDisclosure(){return authorized;},async status(){return 'active';}};
@@ -191,4 +225,11 @@ test('unlink has no password bypass and needs a fresh same-identity LoA4 proof; 
  await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4,transaction:old})).response.status,409);assert.equal(c.state.account.linked,true);
  await c.ok('unlink');f.advance(61000);assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
  await c.ok('unlink');await c.approve();assert.equal(c.state.account.linked,false);
+});
+
+test('account deletion cannot remove additional bindings without their own unlink approvals or follow a changed session',async t=>{
+ const {c}=await fixture(t);await c.login();await c.ok('settings');await c.ok('settings-link');await c.approve();await c.ok('settings-link');await c.approve('demo-bob');
+ await c.ok('delete-account-start');await c.approve();assert.equal(c.state.screen,'settings');assert.equal(c.state.account.linked,true);assert.equal((await c.action('delete-account-confirm')).response.status,409);
+ await c.ok('delete-account-start');await c.approve('demo-bob');assert.equal(c.state.screen,'delete-confirm');assert.equal(c.state.account.linked,false);
+ await c.ok('logout');await c.ok('login',{username:'other@example.test',password:'demo'});assert.equal((await c.action('delete-account-confirm')).response.status,409);assert.equal(c.state.demoAccounts.length,2);
 });

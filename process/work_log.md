@@ -193,3 +193,11 @@
 - Outputs: demo 0.1.9 live; public integration spec 10, internal spec 8, demo guide/README 7; pinned runtime tests and live acceptance receipt retained in the ignored operator release directory.
 - Results: 18 tests pass locally and in the deployed pinned runtime. The real-provider adapter test verifies an immediate provider redirect while the binding remains intact. Live walkthrough confirms one-click arrival at approval and cancellation preserves the binding; public health reports 0.1.9. Exact LoA4 user/provider signature, target binding, expiry and replay requirements are unchanged. No Passli API/mobile deployment was needed.
 - Next steps: refresh the demo to load the updated settings action. Physical phone approval remains separate from synthetic verification.
+
+## 2026-10-24 — Delete my Account (demo 0.1.10)
+
+- What we did: added account-settings deletion. Linked accounts first complete a verified LoA4 unlink for each binding, then explicitly confirm site deletion. A one-use, same-browser/account, at-most-60-second restricted confirmation survives a Passli session ending on unlink; it grants no project access. Deletion removes the selected account/PII/bindings and session, rotates cookie/CSRF and preserves unrelated accounts and the real Passli account.
+- Command / executable: node --test demo/test/flows.test.mjs demo/test/passli.test.mjs; ignored delete010-release/deploy-demo.py; live disposable walkthrough HTTP acceptance and browser settings inspection.
+- Outputs: demo 0.1.10 live, 22 tests passing locally and in pinned deployed runtime; public site spec 11, internal spec 9, demo README/guide 8.
+- Results: confirmation/replay/expiry/cancellation/multiple bindings/account switch and Passli-session deletion checks pass. Persistent global binding removal is verified. A later Passli login starts unbound setup. Browser confirms Delete my Account appears in settings. No provider API/mobile release was required.
+- Next steps: physical phone acceptance is separate from synthetic proof/device mocks; real Passli account is never deleted by this control.

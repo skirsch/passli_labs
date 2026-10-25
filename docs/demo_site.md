@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 7
+Version: 8
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -70,3 +70,13 @@ and bindings within 15 seconds, even without browser activity. Existing records
 use their original workspace creation time when migrating to this policy. A later
 Passli login starts unbound setup again. Other accounts retain their own fixed
 deadlines. The real Passli account and provider-side history are unaffected.
+
+## Account deletion
+
+Settings offers Delete my Account. Obtain fresh LoA4 unlink approval for each
+remaining binding, then ask for final site-account deletion confirmation. For
+an unlinked account, show that confirmation directly. Remove only the selected
+account/data/bindings and end its session. A restricted 60-second confirmation
+capability may survive unlink ending a Passli session; it never grants project
+access. Cancellation/expiry preserves the account; a completed unlink stays
+unlinked. Never delete the real Passli account. Later Passli login starts setup.

@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 10
+Version: 11
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -233,6 +233,28 @@ roles and other sites' associations. A later unbound login shows setup again;
 relinking always needs a fresh explicit link flow. Grant revocation and logout
 remain separate operations. The temporary demo's automatic account expiry is
 account-data cleanup, not authorization to manually unlink a retained account.
+
+### Delete the site account
+
+Offer **Delete my Account** in account settings. Delete the selected local account,
+its profile data, Passli bindings and dependent site sessions; preserve unrelated
+accounts and the user's Passli account. Account deletion must not bypass unlink
+authorization: obtain a fresh, verified LoA 4 or higher unlink proof for every
+remaining Passli binding before removing it.
+
+In the demo, a linked account's Delete my Account click starts that unlink flow.
+After unlink approval, return to a final explicit deletion confirmation. The
+unlink screen's statement that site data remains is true until this separate
+confirmation. An unlinked account goes directly to deletion confirmation. If
+unlink ends the Passli site session, retain only a server-held, same-browser,
+same-account, one-use deletion authorization for at most 60 seconds, bounded by
+account expiry. It must not authorize project access or a replacement session.
+Cancel, timeout, changed account/session or a newly linked identity invalidates
+that authorization. Final deletion atomically removes the selected local data and
+bindings, ends the site session and rotates its cookie/CSRF token. Old callbacks
+and challenges must not recreate the deleted account or binding. A later unbound
+Passli login starts normal first-use setup.
+
 
 ## 6. Suspend, resume and terminate
 

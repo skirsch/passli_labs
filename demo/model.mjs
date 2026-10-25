@@ -12,6 +12,9 @@ export function freshWorld(now = Date.now()) {
   return {csrf:random(), created:now, installed:true, screen:'login', accounts:[{id:random(), name:'Avery Chen', email:'avery@example.test', identities:[],createdAt:now,expiresAt:now+accountLifetime}], session:null, setup:null, pending:null, providerStatus:'active'};
 }
 export function expire(world, now = Date.now()) {
+  if(world.deletion&&(world.deletion.expires<=now||!world.accounts.some(a=>a.id===world.deletion.accountId)||(world.session?.id||null)!==world.deletion.sessionId)){
+    world.deletion=null;if(world.screen==='delete-confirm')world.screen=world.session?'settings':'login';
+  }
   if(world.screen==='unlink-confirm')world.screen=world.session?'settings':'login';
   if(world.registration?.expires<=now){world.registration=null;world.screen="register";}
   for (const account of world.accounts) {
@@ -40,7 +43,8 @@ export function authorizedAccount(world) {
 }
 export function publicState(world) {
   const account = authorizedAccount(world);
-  return {mode:'walkthrough', modeLabel:'Interactive walkthrough · Simulated Passli approvals', csrf:world.csrf, installed:world.installed, screen:world.screen, sessionMethod:world.session?.method || null, setup:!!world.setup, pendingAction:world.pending?.action, transaction:world.pending?.id || null, piiRequest:world.registration?{id:world.registration.release.id}:null, demoAccounts:world.accounts.map(a=>({name:a.name,email:a.email})), account:account ? {name:account.name,email:account.email,phone:account.phone,linked:account.identities.length > 0,expiresAt:account.expiresAt} : null};
+  const deletion=world.deletion&&world.accounts.find(a=>a.id===world.deletion.accountId);
+  return {mode:'walkthrough', modeLabel:'Interactive walkthrough · Simulated Passli approvals', csrf:world.csrf, installed:world.installed, screen:world.screen, sessionMethod:world.session?.method || null, setup:!!world.setup, pendingAction:world.pending?.action, transaction:world.pending?.id || null, deletion:deletion?{name:deletion.name,email:deletion.email}:null, piiRequest:world.registration?{id:world.registration.release.id}:null, demoAccounts:world.accounts.map(a=>({name:a.name,email:a.email})), account:account ? {name:account.name,email:account.email,phone:account.phone,linked:account.identities.length > 0,expiresAt:account.expiresAt} : null};
 }
 function requireAccount(world) {
   const account = authorizedAccount(world);
@@ -53,6 +57,10 @@ function session(world, account, method, subject, now) {
 }
 function pending(world, action, now, extra = {}) {
   world.pending = {id:random(),action,expires:now+minute,...extra}; world.screen = 'approval';
+}
+function prepareDeletion(world,account,now){
+  world.deletion={accountId:account.id,sessionId:world.session?.id||null,expires:Math.min(now+minute,account.expiresAt)};
+  world.screen='delete-confirm';
 }
 function checkProof(world, body, now, verifiedIdentity) {
   const proof = world.pending;
@@ -109,6 +117,7 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
         if(verifiedIdentity ? !verifiedUnlink : body.achievedLoA!==4)fail('Unlink requires a fresh verified LoA 4 signature.');
         account.identities=account.identities.filter(subject=>subject!==identity);delete account.linkIds[identity];world.setup=null;world.providerAssociation=null;
         if(world.session.method==='passli'&&world.session.subject===identity){world.session=null;world.screen='login';}else world.screen='settings';
+        if(proof.prepareDeletion&&!account.identities.length)prepareDeletion(world,account,now);
         return 'Passli unlinked after LoA 4 approval. Your account and projects are preserved.';
       }
       if (proof.action === 'resume') {
@@ -151,6 +160,21 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
     case 'register':
       if (world.screen !== 'register') fail('Choose account creation first.');
       pending(world,'register',now,world.setup?{subject:world.setup.subject}:{}); return '';
+    case 'delete-account-start': {
+      const account=requireAccount(world);
+      if(world.screen!=='settings')fail('Open account settings before deleting.');
+      world.deletion=null;world.setup=null;
+      if(account.identities.length){const subject=account.identities[0],bindingId=account.linkIds?.[subject];if(!bindingId)fail('No current Passli binding exists.');pending(world,'unlink',now,{accountId:account.id,sessionId:world.session.id,subject,bindingId,prepareDeletion:true});}
+      else prepareDeletion(world,account,now);
+      return '';
+    }
+    case 'delete-account-confirm': {
+      const deletion=world.deletion,account=world.accounts.find(a=>a.id===deletion?.accountId);
+      if(world.screen!=='delete-confirm'||!deletion||!account||deletion.expires<=now||(world.session?.id||null)!==deletion.sessionId||account.identities.length)fail('Restart account deletion from settings.');
+      world.accounts=world.accounts.filter(a=>a.id!==account.id);
+      world.session=null;world.setup=null;world.pending=null;world.inflight=null;world.registration=null;world.providerAssociation=null;world.deletion=null;world.csrf=random();world.screen='login';
+      return 'Your Northstar account and its Passli linkage have been deleted. Your Passli account is unchanged.';
+    }
     case 'unlink-start': // Compatibility for a previously loaded settings button.
     case 'unlink': {
       if(world.screen!=='settings')fail('Open account settings before unlinking.');
@@ -165,7 +189,7 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
       requireAccount(world);if (world.session.method !== 'passli') fail('Sign in using Passli first.');
       world.providerStatus=action === 'terminate' ? 'terminated' : 'unavailable';world.session=null;world.pending=null;world.setup=null;world.screen='login';return action === 'terminate' ? 'Your site session ended. Your account is still linked.' : 'Provider authorization could not be verified. The site session ended.';
     case 'logout': world.inflight=null;world.session=null;world.setup=null;world.pending=null;world.screen='login';return 'You are signed out of Northstar. Your account links are unchanged.';
-    case 'cancel': world.registration=null;world.inflight=null;world.pending=null;world.setup=null;world.screen=world.session ? world.providerStatus === 'suspended' ? 'suspended' : 'settings' : 'login';return '';
+    case 'cancel': world.deletion=null;world.registration=null;world.inflight=null;world.pending=null;world.setup=null;world.screen=world.session ? world.providerStatus === 'suspended' ? 'suspended' : 'settings' : 'login';return '';
     default: fail('Unknown demo action.');
   }
 }
