@@ -218,3 +218,12 @@
 - Outputs: demo 0.1.11 live; 24 tests pass locally and in the pinned deployed runtime; notes011-release/live-acceptance.json confirms returning-login persistence, other-account isolation and unchanged creation expiry. Demo README/guide version 9 and privacy notice updated.
 - Results: saving does not extend the fixed 30-minute lifetime from creation. Expiry/deletion removes notes; SQLite restart preserves unexpired notes. A rollback-container name collision briefly stopped deployment; restored the existing service, added a pre-stop collision check, and successfully deployed with a unique rollback name. No API/mobile deployment.
 - Next steps: refresh the demo. Real phone approval acceptance is separate from mocked provider coverage and live ordinary-login HTTP verification.
+
+
+## 2026-10-24 - Cancel returns to RP settings instead of raw expiry error (demo0.1.13)
+
+- What we did: moved error/cancel callback navigation ahead of approval-proof validation. A matching current callback cancels only that transaction and returns to settings with linkage unchanged. Stale/expired/replayed/different-browser error callbacks still redirect safely, but cannot consume a newer request, redeem a code, unlink or restore authority. Authentication deadlines and fixed account lifetime are unchanged. Demo README/guide version10 document the return behavior.
+- Command / executable: node --test demo/test/flows.test.mjs demo/test/passli.test.mjs; frozen cancel013-release/deploy-demo.py; live HTTPS disposable-account stale-return check.
+- Outputs: apps/web/.web-deploy/cancel013-release/{source,demo013-runtime-test.log,demo013-release.json,live-acceptance.json}. Demo0.1.13 live; rollback passli-integration-demo-before-cancel-0-1-13 retained.
+- Results: all25 tests pass locally and in pinned runtime. Coverage includes ordinary and expired cancellation, stale callback against a newer transaction, browser isolation, unchanged binding/account expiry and no code redemption. Live stale callback returns303 to / and settings, preserving the disposable account and expiry. Initial new test used an obsolete action name; corrected to settings-link. Concurrent version-badge changes excluded from frozen deployment and this commit. No Passli API/mobile change.
+- Next steps: retry Unlink then Cancel; the RP returns to settings. If the account itself has reached its30-minute lifetime, return to sign-in rather than restoring an expired session.

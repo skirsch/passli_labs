@@ -95,9 +95,17 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     if (path==='/auth/passli/callback') {
       const url=new URL(req.url,origin),proof=world.pending;
       const redirect=()=>{res.writeHead(303,{Location:'/'});res.end();};
+      if(mode==='real'&&url.searchParams.has('error')) {
+        // Cancellation returns no authority. It must still navigate home after
+        // the approval deadline, cleanup, or an already consumed callback.
+        // Only a matching live transaction may cancel current site state.
+        const matches=proof?.state&&url.searchParams.get('state')===proof.state;
+        if(matches)act(world,{action:'cancel'},now());
+        world.message=matches&&proof.action==='unlink'?'Unlink cancelled. Passli is still linked.':'Passli request was not completed. Your account and links are unchanged.';
+        persist();return redirect();
+      }
       if(mode!=='real'||!proof||!proof.state||url.searchParams.get('state')!==proof.state||proof.expires<=now())return json(400,{error:'Login transaction expired or does not match this browser.'});
       world.pending=null;world.inflight=proof.id;persist(); // Reserve once before code exchange; never replay.
-      if(url.searchParams.has('error')) {world.setup=null;world.screen=world.session?'settings':'login';world.message='Login was not completed.';persist();return redirect();}
       try {
         const result=await passli.complete(proof,url.searchParams.get('code'));
         if(proof.expires<=now())throw Error('Login transaction expired.');

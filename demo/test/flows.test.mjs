@@ -258,3 +258,20 @@ test('account deletion cannot remove additional bindings without their own unlin
  await c.ok('delete-account-start');await c.approve('demo-bob');assert.equal(c.state.screen,'delete-confirm');assert.equal(c.state.account.linked,false);
  await c.ok('logout');await c.ok('login',{username:'other@example.test',password:'demo'});assert.equal((await c.action('delete-account-confirm')).response.status,409);assert.equal(c.state.demoAccounts.length,2);
 });
+
+
+test('provider cancellation returns to settings after approval expiry and never consumes a newer transaction',async t=>{
+ let exchanges=0;const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.state;},async complete(){exchanges++;return {identity:'cancel-fixture',association:{subject:'cancel-fixture'}};},async status(){return 'active';}};
+ const f=await fixture(t,{mode:'real',provider}),{c}=f;await c.login();
+ const link=await c.ok('settings-link');await c.callback(new URL(link.redirect).searchParams.get('state'));await c.init();await c.ok('settings');assert.equal(c.state.account.linked,true);
+ const accountId=c.state.account.id,accountExpiry=c.state.account.expiresAt;
+ const cancel=state=>c.request('/auth/passli/callback?'+new URLSearchParams({error:'access_denied',state}),{redirect:'manual'});
+ let begin=await c.ok('unlink'),state=new URL(begin.redirect).searchParams.get('state');
+ let result=await cancel(state);assert.equal(result.response.status,303);assert.equal(result.response.headers.get('location'),'/');await c.init();assert.equal(c.state.screen,'settings');assert.equal(c.state.account.linked,true);assert.match(c.state.message,/Unlink cancelled/);
+ begin=await c.ok('unlink');const expired=new URL(begin.redirect).searchParams.get('state');f.advance(61000);await c.init();assert.equal(c.state.transaction,null);
+ result=await cancel(expired);assert.equal(result.response.status,303);await c.init();assert.equal(c.state.screen,'settings');assert.equal(c.state.account.id,accountId);assert.equal(c.state.account.linked,true);assert.equal(c.state.account.expiresAt,accountExpiry);
+ begin=await c.ok('unlink');const current=c.state.transaction;await cancel(expired);await c.init();assert.equal(c.state.transaction,current,'old cancel cannot consume a newer request');assert.equal(c.state.screen,'approval');assert.equal(c.state.account.linked,true);
+ const other=f.client();await other.init();assert.equal((await other.request('/auth/passli/callback?'+new URLSearchParams({error:'access_denied',state:current}),{redirect:'manual'})).response.status,303);await c.init();assert.equal(c.state.transaction,current,'other browser cannot cancel this request');
+ assert.equal(exchanges,1,'no cancellation redeems a code or verifies an unlink');
+ await cancel(current);await c.init();assert.equal(c.state.screen,'settings');assert.equal(c.state.account.linked,true);
+});

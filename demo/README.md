@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 9
+Version: 10
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -164,3 +164,14 @@ account creation. Saving, activity and repeated logins never extend this deadlin
 Idle cleanup uses the existing 15-second sweep. Unsaved edits stay in page memory
 through focus refreshes for the same account, and are cleared on logout/account
 switch. The field does not use browser local storage.
+
+
+## Returning from cancellation
+
+A Passli error/cancel callback redirects to the site UI, including after the
+approval transaction expires or cleanup has removed it. A matching current
+transaction returns to account settings with the Passli link unchanged. A stale,
+replayed or different-browser return cannot cancel a newer transaction, redeem
+a code, unlink, or restore authorization. Authentication proof deadlines and the
+30-minute account lifetime still apply; cancellation navigation does not extend
+either deadline. Cancellation is not rendered as a raw JSON authentication error.
