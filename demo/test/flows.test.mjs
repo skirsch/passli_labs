@@ -66,7 +66,7 @@ test('real mode uses provider callbacks, persists cross-browser bindings and rej
   assert.equal(c.state.mode,'real');assert.equal(c.state.installed,false);
   assert.equal((await c.action('approve',{identity:'demo-alice'})).response.status,403);
   await c.ok('installation',{installed:true});
-  const complete=async(c,action)=>{const begin=await c.ok(action);const state=new URL(begin.redirect).searchParams.get('state');assert.equal((await c.callback(state)).response.status,303);await c.init();};
+  const complete=async(c,action)=>{const begin=await c.ok(action);if(action==='unlink'){assert.equal(c.state.screen,'approval');assert.equal(c.state.account.linked,true);assert.match(begin.redirect,/^https:\/\/provider.example\/login/);}const state=new URL(begin.redirect).searchParams.get('state');assert.equal((await c.callback(state)).response.status,303);await c.init();};
   await complete(c,'passli-start');assert.equal(c.state.screen,'setup');
   await c.ok('choose-link');await c.ok('link-login',{username:'avery@example.test',password:'demo'});
   await complete(c,'confirm-link');assert.equal(c.state.account.linked,true);
@@ -75,7 +75,7 @@ test('real mode uses provider callbacks, persists cross-browser bindings and rej
   assert.equal(other.state.screen,'home');assert.equal((await other.request('/api/private')).body.accountId,account);
   providerStatus='suspended';await other.init();assert.equal(other.state.screen,'suspended');assert.equal((await other.request('/api/private')).response.status,401);
   providerStatus='active';await other.init();assert.equal(other.state.screen,'home');
-  await other.ok('settings');await other.ok('unlink-start');await complete(other,'unlink');
+  await other.ok('settings');await complete(other,'unlink');
   await complete(other,'passli-start');assert.equal(other.state.screen,'setup');assert.equal(calls,5);
 });
 test('cancelled setup reappears; registration binds a separate account atomically',async t=>{
@@ -98,7 +98,7 @@ test('settings linking rejects an identity already bound elsewhere',async t=>{
 test('unlink preserves account, invalidates Passli session and never restores binding automatically',async t=>{
   const {c}=await fixture(t);await c.login();const before=(await c.request('/api/private')).body;
   await c.ok('settings-link');await c.approve();await c.ok('logout');await c.ok('passli-start');await c.approve();
-  await c.ok('settings');await c.ok('unlink-start');await c.ok('unlink');await c.approve();
+  await c.ok('settings');await c.ok('unlink');await c.approve();
   assert.equal(c.state.screen,'login');assert.equal((await c.request('/api/private')).response.status,401);
   await c.login();assert.deepEqual((await c.request('/api/private')).body,before);assert.equal(c.state.account.linked,false);
   await c.ok('logout');await c.ok('passli-start');await c.approve();assert.equal(c.state.screen,'setup');
@@ -152,7 +152,7 @@ test('any email with demo can link and unlink; invalid credentials create nothin
   assert.equal(c.state.account.email,'any.person@example.org');assert.equal(c.state.screen,'link-confirm');
   const before=(await c.request('/api/private')).body;
   await c.ok('confirm-link');await c.approve();assert.equal(c.state.account.linked,true);
-  await c.ok('unlink-start');await c.ok('unlink');await c.approve();
+  await c.ok('unlink');await c.approve();
   assert.equal(c.state.account.linked,false);assert.deepEqual((await c.request('/api/private')).body,before);
 });
 
@@ -183,12 +183,12 @@ test('idle cleanup deletes registered accounts and real bindings; returning iden
 
 test('unlink has no password bypass and needs a fresh same-identity LoA4 proof; cancellation and expiry preserve binding',async t=>{
  const f=await fixture(t),{c}=f;await c.login();await c.ok('settings-link');await c.approve();
- assert.equal((await c.action('unlink',{username:'avery@example.test',password:'demo'})).response.status,409);assert.equal(c.state.account.linked,true);
- await c.ok('unlink-start');await c.ok('unlink');assert.equal(c.state.screen,'approval');
+ assert.equal((await c.action('unlink',{username:'avery@example.test',password:'demo'})).response.status,200);assert.equal(c.state.screen,'approval');assert.equal(c.state.account.linked,true);await c.ok('cancel');
+ await c.ok('unlink');assert.equal(c.state.screen,'approval');
  assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:3})).response.status,409);assert.equal(c.state.account.linked,true);
- await c.ok('unlink-start');await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-bob',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
- await c.ok('unlink-start');await c.ok('unlink');const old=c.state.transaction;await c.ok('cancel');assert.equal(c.state.account.linked,true);
- await c.ok('unlink-start');await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4,transaction:old})).response.status,409);assert.equal(c.state.account.linked,true);
- await c.ok('unlink-start');await c.ok('unlink');f.advance(61000);assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
- await c.ok('unlink-start');await c.ok('unlink');await c.approve();assert.equal(c.state.account.linked,false);
+ await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-bob',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink');const old=c.state.transaction;await c.ok('cancel');assert.equal(c.state.account.linked,true);
+ await c.ok('unlink');assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4,transaction:old})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink');f.advance(61000);assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:4})).response.status,409);assert.equal(c.state.account.linked,true);
+ await c.ok('unlink');await c.approve();assert.equal(c.state.account.linked,false);
 });

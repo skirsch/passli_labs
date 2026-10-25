@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 6
+Version: 7
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -64,7 +64,7 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
 4. **Link from settings:** ordinary fictional Northstar login → Settings →
    Link Passli → fresh Passli proof → linked. The settings button starts the
    transaction immediately, without another site confirmation screen.
-5. **Unlink:** Settings → Unlink Passli → confirm the named account → fresh
+5. **Unlink:** Settings → Unlink Passli → immediately open Passli for fresh
    Passli unlink signature at LoA 4 or higher. No old site password is requested.
    Projects remain; Passli-established sessions end. A
    later unbound Passli login returns to the chooser.

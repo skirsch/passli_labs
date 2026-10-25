@@ -185,3 +185,11 @@
 - Next steps: finish sequential deployment and canonical backup barriers; restart already-rendered approval pages to load updated HTML. Physical device acceptance remains separate.
 
 - Deployment completion: all five hosts verified API580, the exact 1,072 source hashes, unchanged config/dependencies/web bundle and zero restarts. Canary continuation rendering and every sequential canonical backup barrier passed; rollback containers retained. Cancel and reopen an existing popup to load new HTML.
+
+## 2026-10-24 — One-click unlink handoff (demo 0.1.9)
+
+- What we did: removed Northstar's unlink confirmation page. The settings Unlink Passli button directly starts the first-class provider unlink request for the authenticated account/current binding. Passli explains the operation and obtains phone approval. Existing cached unlink-start actions remain compatible; an old persisted confirmation screen returns to settings.
+- Command / executable: node --test demo/test/flows.test.mjs demo/test/passli.test.mjs; ignored unlink019-release/deploy-demo.py and live HTTPS walkthrough request/cancellation checks.
+- Outputs: demo 0.1.9 live; public integration spec 10, internal spec 8, demo guide/README 7; pinned runtime tests and live acceptance receipt retained in the ignored operator release directory.
+- Results: 18 tests pass locally and in the deployed pinned runtime. The real-provider adapter test verifies an immediate provider redirect while the binding remains intact. Live walkthrough confirms one-click arrival at approval and cancellation preserves the binding; public health reports 0.1.9. Exact LoA4 user/provider signature, target binding, expiry and replay requirements are unchanged. No Passli API/mobile deployment was needed.
+- Next steps: refresh the demo to load the updated settings action. Physical phone approval remains separate from synthetic verification.

@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 9
+Version: 10
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -198,6 +198,10 @@ account does not authorize later automatic account merging.
 ## 5. Unlink Passli
 
 Provide **Unlink Passli** in the linked account's login/security settings.
+That click starts the fresh Passli unlink request immediately. Do not add a
+second site confirmation screen: Passli identifies the unlink operation, explains
+its consequences and obtains the required phone approval. Keep the binding until
+the site verifies the resulting LoA 4 or higher unlink signature.
 **Approved requirement, 2026-10-24:** unlinking requires a fresh Passli `unlink`
 request and a verified user signature at **LoA 4 or higher**. Do not request the
 site's old password or other local credentials as unlink authorization. A local

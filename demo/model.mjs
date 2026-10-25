@@ -12,6 +12,7 @@ export function freshWorld(now = Date.now()) {
   return {csrf:random(), created:now, installed:true, screen:'login', accounts:[{id:random(), name:'Avery Chen', email:'avery@example.test', identities:[],createdAt:now,expiresAt:now+accountLifetime}], session:null, setup:null, pending:null, providerStatus:'active'};
 }
 export function expire(world, now = Date.now()) {
+  if(world.screen==='unlink-confirm')world.screen=world.session?'settings':'login';
   if(world.registration?.expires<=now){world.registration=null;world.screen="register";}
   for (const account of world.accounts) {
     account.linkIds ??= Object.fromEntries(account.identities.map(subject=>[subject,random()]));
@@ -150,12 +151,10 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
     case 'register':
       if (world.screen !== 'register') fail('Choose account creation first.');
       pending(world,'register',now,world.setup?{subject:world.setup.subject}:{}); return '';
-    case 'unlink-start': {
-      const account=requireAccount(world);if(!account.identities.length)fail('No Passli link exists.');
-      world.pending=null;world.setup=null;world.screen='unlink-confirm';return '';
-    }
+    case 'unlink-start': // Compatibility for a previously loaded settings button.
     case 'unlink': {
-      if(world.screen!=='unlink-confirm')fail('Confirm the named account before unlinking.');
+      if(world.screen!=='settings')fail('Open account settings before unlinking.');
+      world.setup=null;
       const account=requireAccount(world),subject=account.identities[0],bindingId=account.linkIds?.[subject];
       if(!subject||!bindingId)fail('No current Passli binding exists.');
       pending(world,'unlink',now,{accountId:account.id,sessionId:world.session.id,subject,bindingId});return '';
