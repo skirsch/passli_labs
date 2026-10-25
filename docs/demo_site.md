@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 4
+Version: 5
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -13,7 +13,8 @@ the live demo. Preserve the compact sign-in page approved in the button mockup.
 ## User journeys
 
 1. Existing local account: ordinary sign-in, account page, login/security
-   settings, Link Passli, fresh approval and named confirmation.
+   settings and one Link Passli click that immediately starts fresh Passli proof
+   without another site confirmation.
 2. First unbound Passli login: restricted setup with Link to my existing account
    and Create new account. Cancellation returns to signed out; abandoned setup
    appears again on a later Passli login.

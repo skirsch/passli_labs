@@ -127,3 +127,22 @@
   passed. Physical phone/browser acceptance remains separate from synthetic proof.
 - Next steps: none for this requested change. Automatic 30-minute demo account
   expiry remains account-data cleanup, distinct from manual unlink authorization.
+
+
+## 2026-10-24 — One-click settings linking and private identity boundary
+
+- What we did: made settings Link Passli immediately start the fresh bound Passli
+  ceremony, without a second site confirmation. First-use account authentication
+  and named linking stay explicit. Documented that site DOM labels disclose the
+  identity, whereas a future Passli-origin iframe or trusted popup can keep its
+  account hint private; no private identity widget is implemented here.
+- Command / executable: 16 HTTP/cryptographic demo tests locally and in the pinned
+  production image; live real-mode settings-action/redirect/cancel check; browser
+  walkthrough from settings through approval to Linked; `git diff --check`.
+- Outputs: demo 0.1.7, public site specification version 6, demo guide version 5.
+- Results: all tests passed; one settings click starts provider proof, no binding
+  exists before verified proof, cancel leaves it unlinked, and the browser
+  walkthrough links without a second site confirmation. Privacy design checked
+  against the HTML origin rules and Chrome content-script documentation.
+- Next steps: private identity rendering needs a separately designed Passli widget
+  or trusted account chooser. Required provider approval and LoA4 unlink remain.

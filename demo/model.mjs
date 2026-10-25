@@ -134,7 +134,10 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
       if (!world.setup) fail('Setup expired. Start a new Passli login.');
       const account = localAccount(world,body,now); session(world,account,'password',null,now); world.screen = 'link-confirm'; return '';
     }
-    case 'settings-link': requireAccount(world); world.setup = null; world.screen = 'link-confirm'; return '';
+    case 'settings-link': {
+      const account=requireAccount(world);world.setup=null;
+      pending(world,'link',now,{accountId:account.id,sessionId:world.session.id});return '';
+    }
     case 'confirm-link': {
       if (world.screen !== 'link-confirm') fail('Confirm the named account before linking.');
       const account = requireAccount(world);

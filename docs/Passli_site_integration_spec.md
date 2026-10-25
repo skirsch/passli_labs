@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 5
+Version: 6
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -165,7 +165,11 @@ switches require restarting explicitly. Commit the binding atomically, preserve
 all existing account data/permissions, and show success.
 
 An additional Link Passli action may be offered from authenticated account
-settings. Linking the same identity to the same account is idempotent. Reject
+settings. That click is the site's explicit consent: start the fresh linking
+transaction immediately, without another site confirmation page or button.
+Display the target account in settings before the click. Required Passli proof
+and any higher configured approval policy still apply; no binding is committed
+until fresh proof is verified. Linking the same identity to the same account is idempotent. Reject
 conflicting settings-based links or races without moving or merging accounts;
 these guards do not add a chooser to ordinary already-bound login.
 
@@ -319,3 +323,21 @@ the target site's client registration and supported protocol configuration;
 the approved LoA 4 unlink contract; protected-native protocol implementation/migration
 when that profile is requested. This document defines requirements without
 claiming these dependencies have shipped.
+
+
+## Private account hint on the button: design boundary
+
+A Passli ID or account label placed in the site's DOM, attributes, image URL,
+canvas inputs or page messages is disclosed to the site. Extension content-script
+isolation does not make shared DOM contents private. The current public button
+stays generic and does not request a global Passli ID for presentation.
+
+A future Passli-controlled cross-origin iframe could render the active account
+label privately while the embedding page receives only bounded operation/status
+messages. Keep identity out of the iframe URL, embedding attributes, messages and
+identity-dependent size. This requires a supported widget/session/discovery
+protocol and browser privacy validation; it is not implemented by this demo.
+A Passli-owned popup or browser-owned account chooser can identify the account
+without placing it in the site's DOM and provides a clearer trusted surface.
+Only the necessary verified site-specific identity should reach the site after
+an approved login/link operation; the global Passli ID need not be disclosed.

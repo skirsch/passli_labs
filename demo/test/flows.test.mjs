@@ -73,13 +73,14 @@ test('cancelled setup reappears; registration binds a separate account atomicall
 });
 test('settings linking rejects an identity already bound elsewhere',async t=>{
   const {c}=await fixture(t);await c.ok('passli-start');await c.approve();await c.ok('choose-create');await c.ok('register');await c.approve();
-  await c.ok('logout');await c.login();await c.ok('settings');await c.ok('settings-link');await c.ok('confirm-link');
+  await c.ok('logout');await c.login();await c.ok('settings');await c.ok('settings-link');
+  assert.equal(c.state.screen,'approval');assert.equal(c.state.pendingAction,'link');assert.equal(c.state.account.linked,false);
   assert.equal((await c.action('approve',{identity:'demo-alice'})).response.status,409);assert.equal(c.state.account.linked,false);
-  await c.ok('settings-link');await c.ok('confirm-link');await c.approve('demo-bob');assert.equal(c.state.account.linked,true);
+  await c.ok('settings-link');await c.approve('demo-bob');assert.equal(c.state.account.linked,true);
 });
 test('unlink preserves account, invalidates Passli session and never restores binding automatically',async t=>{
   const {c}=await fixture(t);await c.login();const before=(await c.request('/api/private')).body;
-  await c.ok('settings-link');await c.ok('confirm-link');await c.approve();await c.ok('logout');await c.ok('passli-start');await c.approve();
+  await c.ok('settings-link');await c.approve();await c.ok('logout');await c.ok('passli-start');await c.approve();
   await c.ok('settings');await c.ok('unlink-start');await c.ok('unlink');await c.approve();
   assert.equal(c.state.screen,'login');assert.equal((await c.request('/api/private')).response.status,401);
   await c.login();assert.deepEqual((await c.request('/api/private')).body,before);assert.equal(c.state.account.linked,false);
@@ -103,7 +104,7 @@ test('expiry, identity switch, CSRF, installation controls and visitor isolation
   await c.ok('logout');await c.ok('passli-start');await c.approve();f.advance(301000);assert.equal((await c.action('choose-create')).response.status,409);
 });
 test('termination/provider failure deny access while keeping bindings',async t=>{
-  const {c}=await fixture(t);await c.login();await c.ok('settings-link');await c.ok('confirm-link');await c.approve();await c.ok('logout');
+  const {c}=await fixture(t);await c.login();await c.ok('settings-link');await c.approve();await c.ok('logout');
   for(const end of ['terminate','provider-error']) {await c.ok('passli-start');await c.approve();await c.ok(end);assert.equal((await c.request('/api/private')).response.status,401);}
   await c.login();assert.equal(c.state.account.linked,true);
 });
@@ -164,7 +165,7 @@ test('idle cleanup deletes registered accounts and real bindings; returning iden
 
 
 test('unlink has no password bypass and needs a fresh same-identity LoA4 proof; cancellation and expiry preserve binding',async t=>{
- const f=await fixture(t),{c}=f;await c.login();await c.ok('settings-link');await c.ok('confirm-link');await c.approve();
+ const f=await fixture(t),{c}=f;await c.login();await c.ok('settings-link');await c.approve();
  assert.equal((await c.action('unlink',{username:'avery@example.test',password:'demo'})).response.status,409);assert.equal(c.state.account.linked,true);
  await c.ok('unlink-start');await c.ok('unlink');assert.equal(c.state.screen,'approval');
  assert.equal((await c.action('approve',{identity:'demo-alice',achievedLoA:3})).response.status,409);assert.equal(c.state.account.linked,true);
