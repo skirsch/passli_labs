@@ -168,7 +168,7 @@
   prompts do not rewrite their existing HTML automatically. Physical acceptance
   remains separate from synthetic proof and browser rendering checks.
 
-## 2026-10-24 — Passli PII account creation (demo 0.1.8)
+## 2026-10-24 â€” Passli PII account creation (demo 0.1.8)
 
 - What we did: replaced Northstar's fictional signup profile/local account path with one Create account with Passli button. Registration opens a Passli popup, requests name/phone/email, then continues to existing authorized-device disclosure. Login/linking still request no PII. Account and binding commit only after complete, live-authorized PII delivery; data follows the fixed 30-minute account lifetime. Public privacy notice and integration/demo guides updated.
 - Command / executable: node --test demo/test/flows.test.mjs demo/test/passli.test.mjs (public repo); node --test scripts/fedcm/pii-disclosure-http.test.mjs scripts/fedcm/direct-login.test.mjs (private provider); ignored operator pii018-release/deploy-demo.py.
