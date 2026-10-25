@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 5
+Version: 6
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -20,8 +20,7 @@ the live demo. Preserve the compact sign-in page approved in the button mockup.
    appears again on a later Passli login.
 3. Linking: prove control of the existing site account, confirm the named target,
    obtain fresh Passli proof for that same identity and commit a unique binding.
-4. Registration: explicit account creation, normal site registration validation,
-   atomic binding and ordinary site session only after completion.
+4. Registration: one Create account with Passli button, no local name/phone/email form. Request those fields in the Passli popup, use approved PII supplied by the authorized device, then atomically create the account and binding. Missing, denied, expired or cancelled sharing creates no account.
 5. Returning linked identity: enter the original account directly without chooser.
 6. Settings: show linked status and Unlink Passli, confirm removal, retain account
    data and alternative login; later unbound login returns to the chooser.

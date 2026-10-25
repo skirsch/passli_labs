@@ -167,3 +167,11 @@
 - Next steps: start a fresh unlink request after deployment; previously rendered
   prompts do not rewrite their existing HTML automatically. Physical acceptance
   remains separate from synthetic proof and browser rendering checks.
+
+## 2026-10-24 — Passli PII account creation (demo 0.1.8)
+
+- What we did: replaced Northstar's fictional signup profile/local account path with one Create account with Passli button. Registration opens a Passli popup, requests name/phone/email, then continues to existing authorized-device disclosure. Login/linking still request no PII. Account and binding commit only after complete, live-authorized PII delivery; data follows the fixed 30-minute account lifetime. Public privacy notice and integration/demo guides updated.
+- Command / executable: node --test demo/test/flows.test.mjs demo/test/passli.test.mjs (public repo); node --test scripts/fedcm/pii-disclosure-http.test.mjs scripts/fedcm/direct-login.test.mjs (private provider); ignored operator pii018-release/deploy-demo.py.
+- Outputs: demo 0.1.8; public integration spec 8, demo guide/README 6; private integration spec 6. Deployment retained previous 0.1.7 container and fixed image/config/data mount.
+- Results: 18 demo tests plus 9 provider tests pass; same demo suite passes in deployed pinned Node runtime. Public HTTPS health reports 0.1.8. Live browser signup shows only the Passli button and sharing/lifetime explanation, no profile inputs. Tests cover device delivery, denied authorization, incomplete fields, cancellation, replay, existing linking/unlink and expiry. No provider/mobile code change or deployment was needed.
+- Next steps: physical end-to-end acceptance of the existing Passli PII picker/device-sharing flow remains separate; no real user PII was used for automated testing.

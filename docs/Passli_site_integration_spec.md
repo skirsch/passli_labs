@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 7
+Version: 8
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -175,9 +175,7 @@ these guards do not add a chooser to ordinary already-bound login.
 
 ### Create new account
 
-Explicitly create a separate local account through the site's normal required
-fields, terms, eligibility and verification. Request optional Passli profile
-data only with permission. Email is profile data, never an account-binding key;
+Offer Create account with Passli. Request the required name, phone and email through Passli's PII consent and authorized disclosure flow rather than asking the user to retype information already held by Passli. Create the local account only after approved data arrives and required field validation succeeds. Cancellation, missing fields or disclosure failure must leave no account or binding. Apply the site's terms, eligibility and verification rules; shared contact data is not automatically proof of mailbox or phone control. Email is profile data, never an account-binding key;
 matching even verified emails does not authorize linking. Apply normal duplicate
 registration rules and offer existing login/recovery when necessary.
 

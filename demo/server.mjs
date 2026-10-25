@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {freshWorld,expire,publicState,act,random,authorizedAccount} from './model.mjs';
 import {version} from './version.mjs';
 import {createPassli} from './passli.mjs';
+import {validatePiiRelease,validateDelivery,publicRelease} from './pii.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',now=Date.now,mode='walkthrough',provider,publicPrefix='',cleanupInterval=15000}={}) {
@@ -42,6 +43,33 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const path=new URL(req.url,origin).pathname;
+    if(mode==='real'&&['/api/pii-challenge','/api/pii-release'].includes(path)) {
+      try {
+        const caller=req.headers.origin;
+        if(caller&&!['https://passli.app','https://dev.passli.app'].includes(caller))throw Error('Unrecognized sharing origin.');
+        if(caller){res.setHeader('Access-Control-Allow-Origin',caller);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');}
+        if(req.method==='OPTIONS'){res.writeHead(204);res.end();return;}
+        let body={};
+        if(req.method==='POST'){let text='';for await(const chunk of req){text+=chunk;if(Buffer.byteLength(text)>8192)throw Error('Sharing response too large.');}body=JSON.parse(text);}
+        const requestId=path==='/api/pii-challenge'?new URL(req.url,origin).searchParams.get('id'):body.id;
+        const row=db.prepare('SELECT id,state FROM visitors').all().find(row=>JSON.parse(row.state).registration?.release.id===requestId);
+        if(!row)throw Error('Sharing request expired or was cancelled.');
+        let world=JSON.parse(row.state);const registration=world.registration,release=registration.release;
+        if(!validatePiiRelease(release,origin)||registration.expires<=now())throw Error('Sharing request expired.');
+        if(req.method==='GET'&&path==='/api/pii-challenge')return json(200,publicRelease(release));
+        if(req.method!=='POST'||path!=='/api/pii-release')return json(405,{error:'Unsupported sharing method.'});
+        validateDelivery(body,release);
+        if(!await passli.authorizeDisclosure(registration.association,body))throw Error('Sharing authorization was revoked or changed.');
+        // Re-read after authorization: cancellation, another tab and expiry win.
+        const current=load.get(row.id);if(!current)throw Error('Registration was cancelled.');world=JSON.parse(current.state);expire(world,now());
+        if(world.registration?.release.id!==requestId||world.registration.proof.id!==registration.proof.id||world.screen!=='profile-sharing'||world.session||bindingFor.get(registration.identity))throw Error('Registration changed. Start again.');
+        world.pending={...registration.proof,expires:registration.expires};
+        act(world,{action:'approve',transaction:registration.proof.id,identity:registration.identity},now(),{verifiedIdentity:registration.identity,personalInformation:body.values});
+        world.registration=null;world.providerAssociation=registration.association;
+        db.exec('BEGIN IMMEDIATE');try{const account=authorizedAccount(world);db.prepare('INSERT INTO bindings VALUES (?,?,?)').run(registration.identity,row.id,account.id);save.run(row.id,JSON.stringify(world),now());db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
+        return json(200,{received:true});
+      }catch{return json(409,{error:'Personal information could not be accepted. Restart account creation in Northstar.'});}
+    }
     if(mode==='real'&&path==='/walkthrough') {res.writeHead(308,{Location:'/walkthrough/'});res.end();return;}
     if (path==='/health' && req.method==='GET') return json(200,{ok:true,version,mode});
     if (files.has(path) && ['GET','HEAD'].includes(req.method)) {const file=files.get(path);res.writeHead(200,{'Content-Type':file.type});res.end(req.method==='HEAD'?undefined:file.body);return;}
@@ -85,8 +113,13 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
           const current=load.get(id);if(!current)throw Error('Site transaction is unavailable.');world=JSON.parse(current.state);expire(world,now());
           if(['link','unlink'].includes(proof.action)&&world.session?.id!==proof.sessionId)throw Error('Site account changed during linking.');
         }
+        if(proof.action==='register'&&result.piiRelease) {
+          if(!validatePiiRelease(result.piiRelease,origin)||result.piiRelease.expires<=now()||(proof.subject&&proof.subject!==result.identity))throw Error('Invalid personal information release.');
+          world.registration={proof,identity:result.identity,association:result.association,release:result.piiRelease,expires:Math.min(result.piiRelease.expires,now()+120000)};
+          world.screen='profile-sharing';world.pending=null;rotate();persist();res.writeHead(303,{Location:'https://passli.app/?'+new URLSearchParams({piiRelease:result.piiRelease.id,piiSite:origin})});res.end();return;
+        }
         world.pending=proof;
-        act(world,{action:'approve',transaction:proof.id,identity:result.identity},now(),{verifiedIdentity:result.identity,verifiedUnlink:result.unlinkVerified===true});
+        act(world,{action:'approve',transaction:proof.id,identity:result.identity},now(),{verifiedIdentity:result.identity,verifiedUnlink:result.unlinkVerified===true,personalInformation:result.personalInformation});
         if(world.session?.method==='passli')world.providerAssociation=result.association;
         db.exec('BEGIN IMMEDIATE');try{rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
         return redirect();

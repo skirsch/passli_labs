@@ -1,11 +1,10 @@
 # Northstar: complete site integration demo
 
-Version: 5
+Version: 6
 Updated: 2026-10-24
 
 Northstar is a fictional site with an actual server-side account/linking model.
-The default service mode uses real Passli Direct authentication. It requests no
-profile data, uses a site-specific public subject and verifies the signed assertion
+The default service mode uses real Passli Direct authentication. Registration requests name, phone and email with Passli consent and authorized device delivery. Login and linking request no profile data. It uses a site-specific public subject and verifies the signed assertion
 and current provider authorization before a Passli session can access projects.
 
 **[Real demo](https://demo.passli.app)** ·
@@ -82,6 +81,7 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
 | `public/app.js`, `public/style.css` | Compact site UI, account screens and presentation-only extension discovery |
 | `server.mjs` | HTTP, origin/CSRF checks, cookie rotation, SQLite persistence, real callbacks and unique global bindings |
 | `model.mjs` | Explicit setup/link/register/unlink/session state transitions |
+| `pii.mjs` | Origin-bound disclosure validation, exact approved fields and delivery-token checks |
 | `passli.mjs` | S256 PKCE, signed assertion verification and live provider authorization; single-use verified TLS requests |
 | `edge-worker.mjs` | Demo-only edge forwarding to a configured HTTPS origin |
 | `test/` | HTTP journeys, denial cases, concurrency, persistence and protocol checks |
@@ -93,7 +93,7 @@ passwords and projects are fictional.** The filled-in `demo` is deliberately
 public and proves control only within this demo's isolated fictional account
 space. Replace that local-login fixture with your site's real authentication/MFA;
 never reuse it to protect customer data. No actual Passli passwords, recovery
-material, private keys or profile data are requested by Northstar.
+material or private keys are requested by Northstar. Registration receives only the name, phone and email approved in Passli; the walkthrough uses a fictional shared profile.
 
 Bindings are stored on the server until the account expires, unique by verified subject for this fixed
 issuer/client, and resolved only after proof verification. Each initial visitor
@@ -134,3 +134,5 @@ and bindings within 15 seconds, even without browser activity. Existing records
 use their original workspace creation time when migrating to this policy. A later
 Passli login starts unbound setup again. Other accounts retain their own fixed
 deadlines. The real Passli account and provider-side history are unaffected.
+
+Registration uses `request_pii=true`. The backend verifies the signed assertion, completes the provider grant and stages the origin-bound `piiRelease` for at most its original 120-second lifetime. `/api/pii-challenge` exposes only the public challenge; `/api/pii-release` verifies the delivery token, approved fields and live provider authorization before atomic account creation and binding. CORS allows only Passli web origins. Cancellation and expiry discard the pending release. Email is profile data, never proof of an existing account or permission to merge.

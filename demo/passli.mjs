@@ -2,6 +2,7 @@ import {verifyUnlink} from './unlink.mjs';
 import https from 'node:https';
 import {createHash,createPublicKey,verify} from 'node:crypto';
 import {random} from './model.mjs';
+import {validatePiiRelease} from './pii.mjs';
 
 export function providerRequest(url,{method='GET',body,timeout=5000}={}) {
   const target=new URL(url);if(target.protocol!=='https:')throw Error('Passli requires HTTPS.');
@@ -32,7 +33,7 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
   return {
     begin(proof) {
       proof.state=random();proof.nonce=random();proof.verifier=random();
-      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':'1',request_pii:'false',...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
+      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':'1',request_pii:proof.action==='register'?'true':'false',...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
       return issuer+'/direct/login?'+parameters;
     },
     async complete(proof,code) {
@@ -41,9 +42,14 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
       if(proof.action==='unlink'){const fields=verifyUnlink(token,jwks,{clientId,nonce:proof.nonce,origin,subject:proof.subject,accountId:proof.accountId,bindingId:proof.bindingId});return {identity:fields.subject,unlinkVerified:true};}
       const claims=verifyAssertion(token,jwks,{issuer,clientId,nonce:proof.nonce});
       const association={sessionId:claims.sid,clientId,subject:claims.sub,grantId:claims.gid};
+      if(proof.action==='register'&&!validatePiiRelease(claims.piiRelease,origin)&&!claims.personalInformation)throw Error('Passli did not authorize personal information.');
       const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:{...association,complete:true},timeout:3000});
       if(status.active!==true)throw Error('Passli authorization is no longer active.');
-      return {identity:claims.sub,association};
+      return {identity:claims.sub,association,...(proof.action==='register'?{personalInformation:claims.personalInformation,piiRelease:claims.piiRelease}:{})};
+    },
+    async authorizeDisclosure(association,body) {
+      const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:{...association,piiRelease:{id:body.id,deliveryToken:body.deliveryToken}},timeout:3000});
+      return status.active===true;
     },
     async status(association) {
       try {const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:association,timeout:3000});return status.active===true?'active':status.suspended===true?'suspended':'terminated';}

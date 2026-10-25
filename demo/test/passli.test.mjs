@@ -9,6 +9,10 @@ const jwks={keys:[{...createPublicKey(privateKey).export({format:'jwk'}),kid:'pa
 const base={iss:'https://api.passli.app',aud:'demo',sub:Buffer.alloc(32,1).toString('base64url'),nonce:'expected-nonce',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+60,requiredLoA:1,achievedLoA:2,gid:'primary.'+'a'.repeat(88)+'.'+'b'.repeat(43),sid:'primary.'+'c'.repeat(88)+'.'+'d'.repeat(43)};
 function token(claims={},header={}) {const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url'),data=encode({alg:'EdDSA',kid:'passli-fedcm-v1',typ:'JWT',...header})+'.'+encode({...base,...claims});return data+'.'+sign(null,Buffer.from(data),privateKey).toString('base64url');}
 const options={issuer:base.iss,clientId:'demo',nonce:base.nonce};
+test('only registration requests personal information in the Passli consent UI',()=>{
+ const provider=createPassli({origin:'https://demo.passli.app'});
+ for(const action of ['login','link','register'])assert.equal(new URL(provider.begin({action})).searchParams.get('request_pii'),action==='register'?'true':'false');
+});
 test('verifier rejects signature, identity, transaction, lifetime and assurance mismatches',()=>{
   assert.equal(verifyAssertion(token(),jwks,options).sub,base.sub);
   for(const claims of [{iss:'https://evil.test'},{aud:'rp1'},{nonce:'wrong'},{sub:'invalid'},{exp:1},{iat:base.iat+40},{exp:base.iat+3601},{achievedLoA:0},{requiredLoA:3},{gid:''},{sid:'unbounded!'},{gid:'raw-account~'+'x'.repeat(43)},{sid:'primary.short.'+'x'.repeat(43)}])assert.throws(()=>verifyAssertion(token(claims),jwks,options));

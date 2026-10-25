@@ -32,6 +32,23 @@ async function fixture(t,{database=':memory:',mode='walkthrough',provider,cleanu
   const c=client();await c.init();return {c,client,server,advance(ms){clock+=ms;}};
 }
 
+test('registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed',async t=>{
+  const identity='z'.repeat(43),origin='http://127.0.0.1:18766';let authorized=true,releaseNumber=0;
+  const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity,association:{subject:identity},piiRelease:{id:'release-'+(++releaseNumber),challenge:'challenge',deliveryToken:'secret-token',siteOrigin:origin,callback:origin+'/api/pii-release',expires:Date.now()+120000,fields:['name','email','phone'].map(output=>({output,recordId:output,field:output}))}};},async authorizeDisclosure(){return authorized;},async status(){return 'active';}};
+  const {c}=await fixture(t,{mode:'real',provider});
+  const start=async()=>{await c.ok('register-local');const response=await c.ok('register');await c.callback(new URL(response.redirect).searchParams.get('state'));await c.init();assert.equal(c.state.screen,'profile-sharing');assert.equal(c.state.account,null);return c.state.piiRequest.id;};
+  const deliver=(id,extra={})=>c.request('/api/pii-release',{method:'POST',headers:{Origin:'https://passli.app','Content-Type':'application/json'},body:JSON.stringify({id,deliveryToken:'secret-token',values:{name:'Provided name',email:'provided@example.test',phone:'+15555550123'},...extra})});
+  const first=await start();assert.equal((await c.request('/api/private')).response.status,401);
+  const challenge=await c.request('/api/pii-challenge?id='+first);assert.equal(challenge.body.deliveryToken,undefined);
+  assert.equal((await deliver(first,{deliveryToken:'wrong'})).response.status,409);
+  assert.equal((await deliver(first,{values:{name:'Missing phone'}})).response.status,409);
+  authorized=false;assert.equal((await deliver(first)).response.status,409);authorized=true;
+  await c.ok('cancel');assert.equal((await deliver(first)).response.status,409);
+  const second=await start();assert.equal((await deliver(second)).response.status,200);await c.init();
+  assert.equal(c.state.account.name,'Provided name');assert.equal(c.state.account.email,'provided@example.test');assert.equal(c.state.account.phone,'+15555550123');assert.equal(c.state.account.linked,true);
+  assert.equal((await deliver(second)).response.status,409);
+});
+
 test('first-use linking preserves account and returning login bypasses chooser',async t=>{
   const {c}=await fixture(t);await c.ok('passli-start');await c.approve();assert.equal(c.state.screen,'setup');
   assert.equal((await c.request('/api/private')).response.status,401);
@@ -149,7 +166,7 @@ test('fixed account lifetime survives activity and relogin; only expired account
 
 test('idle cleanup deletes registered accounts and real bindings; returning identity starts setup again',async t=>{
   const directory=mkdtempSync(join(tmpdir(),'passli-expiry-')),database=join(directory,'demo.sqlite');
-  const identity='x'.repeat(43),provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.state;},async complete(){return {identity,association:{subject:identity}};},async status(){return 'active';}};
+  const identity='x'.repeat(43),provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.state;},async complete(){return {identity,association:{subject:identity},personalInformation:{name:'Jordan Morgan',email:'jordan@example.test',phone:'+15555550123'}};},async status(){return 'active';}};
   const f=await fixture(t,{mode:'real',provider,database,cleanupInterval:10}),{c}=f;
   t.after(()=>rmSync(directory,{recursive:true,force:true}));
   const complete=async(client,action)=>{const r=await client.ok(action);assert.equal((await client.callback(new URL(r.redirect).searchParams.get('state'))).response.status,303);await client.init();};
