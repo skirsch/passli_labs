@@ -209,3 +209,11 @@
 - Outputs: web712 on all five origins; 149 export files verified; 94 CDN checks; release process/releases/web712_pii_values.md. Demo 0.1.10 and API580 unchanged. No native/Metro release.
 - Results: browser shows Full name / Birth date / Birth place and actual approved full-name/contact values. Public bundle bytes/hash verified; API containers unchanged. Isolated source excludes concurrent tag popup/manager edits and preserves their workspace changes. An initial full-tree gate hit concurrent import changes; only the isolated successful gate/export was published. Corrected Windows line-ending serialization in follow-up source commit; code semantics unchanged.
 - Next steps: reload Passli and restart signup for fresh web712 UI; physical phone acceptance remains separate. Server-rendered permission pages cannot show decrypted private values; readable review is on the authorized device.
+
+
+## 2026-10-24 - Demo version in upper left
+
+- Request: display the demo version in the upper-left corner.
+- Change: server renders its running version in an accessible top-left strip on main and walkthrough pages; demo package/runtime incremented to 0.1.12.
+- Validation: npm test: 24 passed, zero failures; local Chrome confirmed visible v0.1.12.
+- Result: source prepared and pushed separately from concurrent notes work; deployment remains pending.

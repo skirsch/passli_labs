@@ -36,6 +36,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
   sweep();const cleanup=setInterval(sweep,cleanupInterval);cleanup.unref();
   const view=world=>({...publicState(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
   const files=new Map([['/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
+  files.get('/').body=Buffer.from(files.get('/').body.toString().replace('{{DEMO_VERSION}}',version));
   if(publicPrefix)files.get('/').body=Buffer.from(files.get('/').body.toString().replace('href="/"',`href="${publicPrefix}/"`));
   let swept=0;const rates=new Map();
   const server=http.createServer(async(req,res)=>{
