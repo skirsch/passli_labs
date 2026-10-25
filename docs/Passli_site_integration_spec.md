@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 11
+Version: 12
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -178,6 +178,8 @@ these guards do not add a chooser to ordinary already-bound login.
 Offer Create account with Passli. Request the required name, phone and email through Passli's PII consent and authorized disclosure flow rather than asking the user to retype information already held by Passli. Create the local account only after approved data arrives and required field validation succeeds. Cancellation, missing fields or disclosure failure must leave no account or binding. Apply the site's terms, eligibility and verification rules; shared contact data is not automatically proof of mailbox or phone control. Email is profile data, never an account-binding key;
 matching even verified emails does not authorize linking. Apply normal duplicate
 registration rules and offer existing login/recovery when necessary.
+
+Use the selected Person record's `fullName` value for the shared name, never its record label or the Passli account alias. The authorized-device sharing review must show the actual Full name, Email and Cell phone values before delivery. Reject missing or blank required values instead of substituting metadata.
 
 The Passli consent screen names requested fields in plain language. Do not render null values, encryption placeholders or internal default/Profile identifiers as personal information. Keep record selection behind an explicit choice when different contacts are available; a default alias and its resolved record are one contact. Review readable values on the authorized device before delivery.
 

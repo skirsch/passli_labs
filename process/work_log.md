@@ -201,3 +201,11 @@
 - Outputs: demo 0.1.10 live, 22 tests passing locally and in pinned deployed runtime; public site spec 11, internal spec 9, demo README/guide 8.
 - Results: confirmation/replay/expiry/cancellation/multiple bindings/account switch and Passli-session deletion checks pass. Persistent global binding removal is verified. A later Passli login starts unbound setup. Browser confirms Delete my Account appears in settings. No provider API/mobile release was required.
 - Next steps: physical phone acceptance is separate from synthetic proof/device mocks; real Passli account is never deleted by this control.
+
+## 2026-10-24 — Full-name values and sentence-case PII captions (web712)
+
+- What we did: sharing review explicitly labels actual approved Person.fullName as Full name, displays actual contact values, removes misleading self record/Profile metadata and rejects blank values without label/alias fallback. Family-sharing context is retained. Applied sentence-case captions to PII editors/table/accessibility labels while preserving keys and values. Public/private site guidance and field-name spec updated.
+- Command / executable: isolated focused PII tests (22 passed), TypeScript, isolated full check-id-contracts gate (1,131 passed / 2 skipped), Expo export, browser component previews with synthetic full-name and mixed-case label fixtures; web712-values web.py/web-verify.py.
+- Outputs: web712 on all five origins; 149 export files verified; 94 CDN checks; release process/releases/web712_pii_values.md. Demo 0.1.10 and API580 unchanged. No native/Metro release.
+- Results: browser shows Full name / Birth date / Birth place and actual approved full-name/contact values. Public bundle bytes/hash verified; API containers unchanged. Isolated source excludes concurrent tag popup/manager edits and preserves their workspace changes. An initial full-tree gate hit concurrent import changes; only the isolated successful gate/export was published. Corrected Windows line-ending serialization in follow-up source commit; code semantics unchanged.
+- Next steps: reload Passli and restart signup for fresh web712 UI; physical phone acceptance remains separate. Server-rendered permission pages cannot show decrypted private values; readable review is on the authorized device.
