@@ -175,3 +175,13 @@
 - Outputs: demo 0.1.8; public integration spec 8, demo guide/README 6; private integration spec 6. Deployment retained previous 0.1.7 container and fixed image/config/data mount.
 - Results: 18 demo tests plus 9 provider tests pass; same demo suite passes in deployed pinned Node runtime. Public HTTPS health reports 0.1.8. Live browser signup shows only the Passli button and sharing/lifetime explanation, no profile inputs. Tests cover device delivery, denied authorization, incomplete fields, cancellation, replay, existing linking/unlink and expiry. No provider/mobile code change or deployment was needed.
 - Next steps: physical end-to-end acceptance of the existing Passli PII picker/device-sharing flow remains separate; no real user PII was used for automated testing.
+
+## 2026-10-24 — Clear Passli PII consent labels (API580)
+
+- What we did: traced the visible null to intentionally absent server-side plaintext values being concatenated into option labels. Removed value/record details from the initial permission rows; added explicit Choose another only for distinct contacts. Default aliases retain their IDs and count with their resolved record as one contact. Updated internal/public site guidance; no contact or consent state migration.
+- Command / executable: 36 focused consent/device/disclosure/unlink tests; complete local check-id-contracts gate; exact frozen gates on five hosts; browser preview of real continuation HTML with encrypted metadata fixtures.
+- Outputs: process/releases/api580_pii_consent.md; ignored consent580-release manifests, checks and receipts; public integration specification version 9, internal version 7.
+- Results: focused tests pass; local gate 1,133 passed, 2 skipped; browser shows only Name/Email/Cell phone checkboxes for the reported single-contact/default-alias case. The placeholder does not establish whether a particular encrypted user contact contains a readable value; those values are reviewed on the authorized device.
+- Next steps: finish sequential deployment and canonical backup barriers; restart already-rendered approval pages to load updated HTML. Physical device acceptance remains separate.
+
+- Deployment completion: all five hosts verified API580, the exact 1,072 source hashes, unchanged config/dependencies/web bundle and zero restarts. Canary continuation rendering and every sequential canonical backup barrier passed; rollback containers retained. Cancel and reopen an existing popup to load new HTML.
