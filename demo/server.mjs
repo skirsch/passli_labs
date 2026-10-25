@@ -104,7 +104,11 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         world.message=matches&&proof.action==='unlink'?'Unlink cancelled. Passli is still linked.':'Passli request was not completed. Your account and links are unchanged.';
         persist();return redirect();
       }
-      if(mode!=='real'||!proof||!proof.state||url.searchParams.get('state')!==proof.state||proof.expires<=now())return json(400,{error:'Login transaction expired or does not match this browser.'});
+      if(mode!=='real')return json(400,{error:'Login transaction is unavailable.'});
+      if(!proof||!proof.state||url.searchParams.get('state')!==proof.state||proof.expires<=now()) {
+        world.message=!proof||proof.expires<=now()?'Your request timed out. Please try again.':'This request could not be verified. Please try again.';
+        persist();return redirect();
+      }
       world.pending=null;world.inflight=proof.id;persist(); // Reserve once before code exchange; never replay.
       try {
         const result=await passli.complete(proof,url.searchParams.get('code'));
@@ -131,7 +135,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         if(world.session?.method==='passli')world.providerAssociation=result.association;
         db.exec('BEGIN IMMEDIATE');try{rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
         return redirect();
-      } catch {const current=load.get(id);if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?'settings':world.setup?'setup':'login';}world.message='Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
+      } catch {const current=load.get(id);if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?'settings':world.setup?'setup':'login';}world.message=proof.expires<=now()?'Your request timed out. Please try again.':'Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
     }
     if(mode==='real'&&world.session?.method==='passli'&&world.providerAssociation) {
       const originalSession=world.session.id,status=await passli.status(world.providerAssociation);

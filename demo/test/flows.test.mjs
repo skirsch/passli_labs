@@ -275,3 +275,15 @@ test('provider cancellation returns to settings after approval expiry and never 
  assert.equal(exchanges,1,'no cancellation redeems a code or verifies an unlink');
  await cancel(current);await c.init();assert.equal(c.state.screen,'settings');assert.equal(c.state.account.linked,true);
 });
+
+
+test('late callback returns a timeout on the site without redeeming or consuming a newer request',async t=>{
+ let exchanges=0;const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.state;},async complete(){exchanges++;return {identity:'timeout-fixture',association:{subject:'timeout-fixture'}};},async status(){return 'active';}};
+ const f=await fixture(t,{mode:'real',provider}),{c}=f;await c.login();const original=c.state.account.id,expiry=c.state.account.expiresAt;
+ const begin=await c.ok('settings-link'),old=new URL(begin.redirect).searchParams.get('state');f.advance(61000);
+ const late=await c.callback(old);assert.equal(late.response.status,303);assert.equal(late.response.headers.get('location'),'/');await c.init();assert.equal(c.state.message,'Your request timed out. Please try again.');assert.equal(c.state.account.id,original);assert.equal(c.state.account.expiresAt,expiry);assert.equal(c.state.account.linked,false);assert.equal(exchanges,0);
+ const current=await c.ok('settings-link'),state=new URL(current.redirect).searchParams.get('state');await c.callback(old);await c.init();assert.equal(c.state.transaction,state);assert.equal(exchanges,0);
+ const stranger=f.client();await stranger.init();assert.equal((await stranger.callback(state)).response.status,303);await c.init();assert.equal(c.state.transaction,state);assert.equal(exchanges,0);
+ await c.callback(state);await c.init();assert.equal(c.state.account.linked,true);assert.equal(exchanges,1);
+ const replay=await c.callback(state);assert.equal(replay.response.status,303);await c.init();assert.equal(c.state.message,'Your request timed out. Please try again.');assert.equal(c.state.account.linked,true);assert.equal(exchanges,1);
+});

@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 10
+Version: 11
 Updated: 2026-10-24
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -107,3 +107,13 @@ replayed or different-browser return cannot cancel a newer transaction, redeem
 a code, unlink, or restore authorization. Authentication proof deadlines and the
 30-minute account lifetime still apply; cancellation navigation does not extend
 either deadline. Cancellation is not rendered as a raw JSON authentication error.
+
+
+## Expired approval and callback
+
+If approval arrives after the original deadline, show "Your request timed out.
+Please try again." The provider hides the expired form and offers Return to site.
+Expired callbacks navigate to the site with a readable message instead of raw
+JSON. Do not redeem a code, mutate a link, restore a session or consume a newer
+request for a stale/foreign callback. Expiry and returning after a timeout are
+not an explicit Cancel. Keep the original request/account deadlines unchanged.

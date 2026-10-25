@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 12
+Version: 13
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -374,3 +374,13 @@ A Passli-owned popup or browser-owned account chooser can identify the account
 without placing it in the site's DOM and provides a clearer trusted surface.
 Only the necessary verified site-specific identity should reach the site after
 an approved login/link operation; the global Passli ID need not be disclosed.
+
+
+## Expired approval and callback
+
+If approval arrives after the original deadline, show "Your request timed out.
+Please try again." The provider hides the expired form and offers Return to site.
+Expired callbacks navigate to the site with a readable message instead of raw
+JSON. Do not redeem a code, mutate a link, restore a session or consume a newer
+request for a stale/foreign callback. Expiry and returning after a timeout are
+not an explicit Cancel. Keep the original request/account deadlines unchanged.

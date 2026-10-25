@@ -227,3 +227,10 @@
 - Outputs: apps/web/.web-deploy/cancel013-release/{source,demo013-runtime-test.log,demo013-release.json,live-acceptance.json}. Demo0.1.13 live; rollback passli-integration-demo-before-cancel-0-1-13 retained.
 - Results: all25 tests pass locally and in pinned runtime. Coverage includes ordinary and expired cancellation, stale callback against a newer transaction, browser isolation, unchanged binding/account expiry and no code redemption. Live stale callback returns303 to / and settings, preserving the disposable account and expiry. Initial new test used an obsolete action name; corrected to settings-link. Concurrent version-badge changes excluded from frozen deployment and this commit. No Passli API/mobile change.
 - Next steps: retry Unlink then Cancel; the RP returns to settings. If the account itself has reached its30-minute lifetime, return to sign-in rather than restoring an expired session.
+
+## 2026-10-24 - Friendly expired callback (demo0.1.14)
+- What we did: expired/replayed/foreign real callbacks redirect to the site with readable timeout/unavailable messages. No code exchange or newer proof consumption; post-exchange deadline errors also show the exact timeout text. Preserved pending version-badge UI work outside the frozen release.
+- Command / executable: 26 demo flow/provider tests locally and in the pinned runtime; timeout014-release/deploy-demo.py; live HTTPS isolated-visitor callback and state check.
+- Outputs: demo0.1.14 live; ignored timeout014-release/demo014-runtime-test.log, demo014-release.json and live-acceptance.json in the private Passli workspace; public integration/demo docs updated.
+- Results: public callback returns home with Your request timed out. Please try again.; no account authorized. Account/link/expiry and newer request isolation covered by synthetic tests. Original deadlines unchanged.
+- Next steps: start a fresh Passli request. Shared provider popup timeout UX is the separate API590 publication; no mobile build required.
