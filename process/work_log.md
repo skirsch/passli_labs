@@ -146,3 +146,24 @@
   against the HTML origin rules and Chrome content-script documentation.
 - Next steps: private identity rendering needs a separately designed Passli widget
   or trusted account chooser. Required provider approval and LoA4 unlink remain.
+
+
+## 2026-10-24 — Explicit unlink approval presentation
+
+- What we did: require unlink-specific headings, waiting text and notification
+  titles in the site contract; document retained site account/data. The provider
+  now renders Approve unlink and an explanation of removing Passli as a sign-in
+  method. Settings one-click linking remains live in demo 0.1.7.
+- Command / executable: 22 focused provider/rendering/outbox tests, full deployment
+  gates on five hosts, local browser rendering, and public synthetic HTTPS proof
+  acceptance including a check of the actual provider continuation HTML.
+- Outputs: public site specification version 7, compatibility reference version 4;
+  Passli provider API579 implementation is in the private application repository.
+- Results: a fresh API578 unlink already had operation-specific wording, while
+  the reported screenshot was login-labeled; its exact pending request was not
+  available for attribution. API579 makes the heading/consequence more explicit
+  and fixes the remaining generic push title. Tests verify unlink wording through
+  LoA4, LoA5 and LoA6 waiting/polling, with unchanged LoA4 signature enforcement.
+- Next steps: start a fresh unlink request after deployment; previously rendered
+  prompts do not rewrite their existing HTML automatically. Physical acceptance
+  remains separate from synthetic proof and browser rendering checks.

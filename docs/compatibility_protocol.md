@@ -1,6 +1,6 @@
 # Direct/FedCM compatibility reference
 
-Version: 3
+Version: 4
 Updated: 2026-10-24
 Status: Existing demonstration profile; not the protected threshold-login protocol.
 
@@ -164,7 +164,10 @@ site session must select the account and current binding; never accept a target
 account from the page. Passli's operation floor remains 4 even if the caller
 requests LoA 1, and higher configured signing/device policy still applies.
 
-The browser and secure-phone approval identify this as `unlink`. The phone's
+The browser heading is **Approve unlink**, its waiting instructions name the
+unlink request, and the push title is **Passli: Unlink Passli**. The page explains
+that it removes a sign-in method while retaining the site account/data. The
+browser and secure-phone approval identify this as `unlink`. The phone's
 signed approval JSON includes the exact target and nonce. No login grace is
 reused. After fresh secure approval, Passli returns a one-use authorization code
 whose exchanged signed token has `kind=passli:unlink:v1`, `operation=unlink`,

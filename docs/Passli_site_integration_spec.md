@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 6
+Version: 7
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -204,6 +204,11 @@ site's old password or other local credentials as unlink authorization. A local
 session, ordinary login assertion, remembered assurance or lower-LoA approval is
 insufficient. Passli enforces a non-downgradable operation minimum of 4; higher
 site/device/account policy still applies. No cached login grace authorizes unlink.
+All approval surfaces must identify the operation as **unlink**, including the
+browser heading, waiting instructions and push notification title. Explain that
+Passli is being removed as a sign-in method while the local account/data remain.
+Derive this wording from the validated operation, not from LoA alone or arbitrary
+RP-supplied prose. Never label an unlink approval as login.
 
 The site backend creates a one-use challenge for the authenticated local account
 and exact current Passli binding. The signed payload must contain operation
