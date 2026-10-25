@@ -185,3 +185,11 @@ Expired callbacks navigate to the site with a readable message instead of raw
 JSON. Do not redeem a code, mutate a link, restore a session or consume a newer
 request for a stale/foreign callback. Expiry and returning after a timeout are
 not an explicit Cancel. Keep the original request/account deadlines unchanged.
+
+## Disabled devices and suspension
+
+Visible Passli sessions poll authorization, and the server rechecks the provider before protected actions. Missing association or unavailable authorization denies access. Suspension clears protected content while retaining the bounded account linkage.
+
+For a disabled device, open the Passli mobile app and tap **Disabled devices**. Review the list, select the devices to restore, and press **Re-enable selected**. Browser recovery does not send repeated approval pushes. The provider must verify this explicit phone operation at the required assurance before the original eligible site session can resume. Recovery never extends the original 30-minute account deadline.
+
+See the [deployment acceptance checklist](../docs/disabled_devices_deployment_test_suite.md). The published reference is demo0.1.15 with API592/mobile726 or later compatible releases; physical-phone acceptance is separate from automated checks.

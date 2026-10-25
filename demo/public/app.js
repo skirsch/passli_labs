@@ -9,7 +9,8 @@ const heading = (title, text = '') => `<div class="auth-heading"><h1>${title}</h
 const passliButton = () => {const hidden=(state.mode === 'real' ? discovered : state.installed)?'':'hidden';return `<div class="divider" ${hidden}>or</div><button type="button" class="provider" data-action="passli-start" ${hidden}><img src="/passli-mark.svg" alt="" width="20" height="20">Continue with Passli</button>`;};
 const localForm = (purpose = 'login') => `<form data-form="${purpose}"><label for="username">Email address</label><input id="username" name="username" type="email" maxlength="254" required autocomplete="off" value="avery@example.test"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="off" value="demo" required><p class="small muted">Enter any email address with password <strong>demo</strong> to try a fictional existing account. No email is sent or verified.</p>${action(purpose, purpose === 'login' ? 'Sign in' : 'Sign in to existing account', 'primary', 'type="submit"')}</form>`;
 let expiryTimer;
-setInterval(()=>{if(state?.screen==='profile-sharing'||state?.pendingAction==='register')void refresh().catch(()=>{});},2000);
+let actionBusy=false,refreshBusy=false,stateRevision=0;
+setInterval(()=>{if(!document.hidden&&(state?.sessionMethod==='passli'||state?.screen==='profile-sharing'||state?.pendingAction==='register'))void refresh().catch(()=>notice('Could not check your session. Please try again.'));},2000);
 
 function render() {
   const account = state.account;
@@ -36,23 +37,32 @@ function render() {
     home: () => `${heading(`Welcome, ${escape(account?.name.split(' ')[0])}`, 'Your Northstar workspace')}<div class="row"><h2>Projects</h2>${action('settings', 'Account settings', 'secondary')}</div><div class="panel"><div class="record"><strong>Website refresh</strong><div class="muted small">Design review · Updated today</div></div><div class="record"><strong>Autumn launch</strong><div class="muted small">Planning · 3 tasks remaining</div></div><div class="record"><strong>Personal notes</strong><div class="muted small">Private workspace</div></div></div><p class="muted small">These sample projects belong to your Northstar account. Linking or unlinking Passli does not delete them.</p><section class="panel" aria-labelledby="notes-heading"><h2 id="notes-heading">Notes</h2><p class="muted small">Save a note to see your context return when you sign in to this same account again. Your note and account are forgotten 30 minutes after account creation.</p><form data-form="notes-save"><label for="notes">Your note</label><textarea id="notes" name="notes" rows="5" maxlength="2000" placeholder="Write something to remember on your next login…">${escape(noteDraft?.text)}</textarea>${action('notes-save', 'Save note', 'primary', 'type="submit"')}</form></section>`,
     settings: () => `${heading('Account settings', 'Manage how you sign in to Northstar.')}<div class="panel"><h2>${escape(account?.name)}</h2><p class="muted">${escape(account?.email)}</p><p class="muted">${escape(account?.phone)}</p></div><h2>Login & security</h2><div class="panel"><div class="row"><div><strong>Password</strong><div class="muted small">Demo password available as an alternative login.</div></div><span class="badge">Available</span></div></div><div class="panel"><div class="panel-head"><img src="/passli-mark.svg" alt=""><div><h2>Passli ${account?.linked ? '<span class="badge">Linked</span>' : ''}</h2><span class="muted small">${account?.linked ? 'Sign in to this account using Passli.' : 'Add Passli as another way to sign in.'}</span></div></div>${action(account?.linked ? 'unlink' : 'settings-link', account?.linked ? 'Unlink Passli' : 'Link Passli', account?.linked ? 'danger' : 'secondary')}</div><p class="muted small">Signing out ends this site session. Unlinking removes the login association.</p><h2>Delete account</h2><div class="panel"><p>Delete your Northstar account and its Passli linkage. Your Passli account will remain.</p>${account?.linked ? '<p class="muted small">First approve unlinking in Passli, then return here to confirm deletion.</p>' : ''}${action('delete-account-start', 'Delete my Account', 'danger')}</div>`,
     'delete-confirm': () => `${heading('Delete your Northstar account?', 'This permanently deletes this Northstar account and its data.')}<div class="callout warning"><strong>${escape(state.deletion?.name)}</strong><p>${escape(state.deletion?.email)}</p>Your Passli account will remain. Any Passli link to this Northstar account has been removed.</div>${action('delete-account-confirm', 'Delete my Account', 'danger')}${cancel()}`,
-    suspended: () => `${heading('Session suspended', 'Log into the same Passli account to resume.')}<div class="callout">Your workspace is locked. Your account is still linked.</div>${action('resume-start', 'Open Passli', 'provider')}${action('logout', 'Log out of this site', 'subtle cancel')}`
+    suspended: () => `${heading('Session suspended', 'Open the Passli mobile app and tap Disabled devices to review and re-enable this device.')}<div class="callout">Your workspace is locked. Your account is still linked.</div>${state.mode==='real'?action('check-session', 'Check device status', 'provider'):action('resume-start','Open Passli','provider')}${action('logout', 'Log out of this site', 'subtle cancel')}`
   };
   app.innerHTML = (views[state.screen] || views.login)();
 }
 
 async function refresh() {
+  if(actionBusy||refreshBusy)return;
+  refreshBusy=true;const revision=stateRevision;
+  try{
   const response = await fetch(endpoint('/api/state'), {cache:'no-store'});
   if (!response.ok) throw Error('Could not load the demo.');
-  state = await response.json();
-  render();
+  const next=await response.json();
+  if(revision!==stateRevision||actionBusy)return;
+  const changed=JSON.stringify(state)!==JSON.stringify(next);state=next;
+  if(changed)render();
   if (state.message) notice(state.message);
   if (state.mode === 'real') discover();
+  }finally{refreshBusy=false;}
 }
 function notice(message) {
   const node = document.querySelector('#notice'); node.textContent = message; node.hidden = !message;
 }
 async function send(name, body = {}) {
+  if(name==='check-session')return refresh();
+  if(actionBusy)return;
+  actionBusy=true;stateRevision++;
   const popup=name==='register'&&state.mode==='real'?window.open('about:blank','passli-registration','popup,width=640,height=760'):null;
   for (const button of document.querySelectorAll('button, textarea')) button.disabled = true;
   try {
@@ -65,7 +75,8 @@ async function send(name, body = {}) {
     render();
     notice(result.message || (response.ok ? '' : 'This action could not be completed.'));
     app.focus({preventScroll:true});
-  } catch { if(popup)popup.close();await refresh().catch(() => {}); notice('The connection was interrupted. Check the current state before retrying.'); }
+  } catch { if(popup)popup.close();actionBusy=false;await refresh().catch(() => {}); render();notice('The connection was interrupted. Check the current state before retrying.'); }
+  finally{actionBusy=false;}
 }
 document.addEventListener('click', event => {
   if(event.target.closest('[data-pii-share]')&&state.piiRequest){window.open('https://passli.app/?piiRelease='+encodeURIComponent(state.piiRequest.id)+'&piiSite='+encodeURIComponent(location.origin),'passli-pii-release','popup,width=640,height=760');return;}

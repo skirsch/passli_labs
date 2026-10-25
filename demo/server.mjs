@@ -137,12 +137,16 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         return redirect();
       } catch {const current=load.get(id);if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?'settings':world.setup?'setup':'login';}world.message=proof.expires<=now()?'Your request timed out. Please try again.':'Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
     }
-    if(mode==='real'&&world.session?.method==='passli'&&world.providerAssociation) {
-      const originalSession=world.session.id,status=await passli.status(world.providerAssociation);
+    async function checkProvider(){
+      if(mode!=='real'||world.session?.method!=='passli')return;
+      const originalSession=world.session.id,association=JSON.stringify(world.providerAssociation);
+      const status=world.providerAssociation?await passli.status(world.providerAssociation):'unavailable';
       const current=load.get(id);if(current)world=JSON.parse(current.state);
-      if(world.session?.id===originalSession) {world.providerStatus=status;expire(world,now());if(status==='active'&&world.screen==='suspended')world.screen='home';}
+      if(world.session?.id===originalSession&&JSON.stringify(world.providerAssociation)===association){world.providerStatus=status;expire(world,now());if(status==='active'&&world.screen==='suspended')world.screen='home';}
+      else if(world.session?.method==='passli'){world.providerStatus='unavailable';expire(world,now());}
       persist();
     }
+    if(path==='/api/state'||path==='/api/private')await checkProvider();
     if (path==='/api/state') {const message=world.message;delete world.message;persist();return json(200,{...view(world),message});}
     if (path==='/api/private') {persist();const account=authorizedAccount(world);return account?json(200,{accountId:account.id,notes:account.notes||'',projects:['Website refresh','Autumn launch','Personal notes']}):json(401,{error:'Current site authorization is required.'});}
     if (req.headers.origin!==origin || req.headers['x-demo-csrf']!==world.csrf || !String(req.headers['content-type']).startsWith('application/json')) return json(403,{error:'Invalid request origin or CSRF proof.'});
@@ -154,10 +158,11 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       if (!body || Array.isArray(body) || typeof body.action!=='string') throw Object.assign(Error('Invalid action.'),{status:400});
       // Re-read after async body input: a concurrent tab may have consumed proof.
       const current=load.get(id);if (current) world=JSON.parse(current.state);
+      await checkProvider();
       expire(world,now());
       if (req.headers['x-demo-csrf']!==world.csrf) return json(403,{error:'Demo state changed. Reload before continuing.'});
       if(mode==='real'&&['approve','suspend','terminate','provider-error','installation','reset'].includes(body.action)&&body.action!=='installation')throw Object.assign(Error('Simulation controls are unavailable in real Passli mode.'),{status:403});
-      if(mode==='real'&&body.action==='resume-start') {persist();return json(200,{state:view(world),redirect:'https://passli.app/'});}
+      if(mode==='real'&&body.action==='resume-start')throw Object.assign(Error('Open the Passli mobile app and choose Disabled devices to review and re-enable this device.'),{status:423});
       if (body.action==='reset') world=freshWorld(now());
       const previousSession=world.session?.id;
       const message=body.action==='reset'?'Fresh fictional demo data is ready.':act(world,body,now());

@@ -1,6 +1,6 @@
 # Passli Site Integration Specification
 
-Version: 13
+Version: 14
 Updated: 2026-10-24
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
@@ -261,7 +261,7 @@ Passli login starts normal first-use setup.
 ## 6. Suspend, resume and terminate
 
 The site must enforce current Passli session authorization on its backend for
-every protected route/API/action, with visible-page checks on focus/resume.
+every protected route/API/action, with visible-page checks on focus/resume and bounded periodic checks while a Passli session is visible. A missing provider association must deny protected access. Recheck the current session after asynchronous input before applying a protected action.
 Suspension changes session access, not account binding or setup completion.
 
 | Verified status | Required site behavior |
@@ -279,6 +279,8 @@ Session suspended
 Log into the same Passli account to resume.
 [ Open Passli ]  [ Log out of this site ]
 ```
+
+For device tripwire suspension, tell the user to open the Passli mobile app and tap **Disabled devices**, select the affected device, and explicitly re-enable it. Do not start browser recovery pushes or retry them indefinitely. Offer **Check device status** and local logout. A device remains disabled until this explicit phone operation succeeds.
 
 Opening Passli or receiving a client event is not proof of authorization.
 Revalidate before revealing data or resuming protected operations. Backend

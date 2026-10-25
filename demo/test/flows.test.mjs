@@ -132,7 +132,7 @@ test('real mode uses provider callbacks, persists cross-browser bindings and rej
   const account=(await c.request('/api/private')).body.accountId;
   await c.ok('logout');const other=client();await other.init();await other.ok('installation',{installed:true});await complete(other,'passli-start');
   assert.equal(other.state.screen,'home');assert.equal((await other.request('/api/private')).body.accountId,account);
-  providerStatus='suspended';await other.init();assert.equal(other.state.screen,'suspended');assert.equal((await other.request('/api/private')).response.status,401);
+  providerStatus='suspended';const blocked=await other.action('notes-save',{notes:'must not save'});assert.ok(blocked.response.status>=400);assert.equal(other.state.screen,'suspended');assert.equal((await other.action('resume-start')).response.status,423);await other.init();assert.equal(other.state.screen,'suspended');assert.equal((await other.request('/api/private')).response.status,401);
   providerStatus='active';await other.init();assert.equal(other.state.screen,'home');
   await other.ok('settings');await complete(other,'unlink');
   await complete(other,'passli-start');assert.equal(other.state.screen,'setup');assert.equal(calls,5);
@@ -287,3 +287,12 @@ test('late callback returns a timeout on the site without redeeming or consuming
  await c.callback(state);await c.init();assert.equal(c.state.account.linked,true);assert.equal(exchanges,1);
  const replay=await c.callback(state);assert.equal(replay.response.status,303);await c.init();assert.equal(c.state.message,'Your request timed out. Please try again.');assert.equal(c.state.account.linked,true);assert.equal(exchanges,1);
 });
+
+ test('real Passli session without a provider association fails closed on state and protected writes',async t=>{
+ const identity='missing-association',provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.state;},async complete(){return {identity};},async status(){throw Error('Missing association must never be checked as active.');}};
+ const {c}=await fixture(t,{mode:'real',provider});
+ await c.ok('installation',{installed:true});
+ async function complete(action){const begin=await c.ok(action),state=new URL(begin.redirect).searchParams.get('state');assert.equal((await c.callback(state)).response.status,303);await c.init();}
+ await complete('passli-start');await c.ok('choose-link');await c.ok('link-login',{username:'missing@example.test',password:'demo'});await complete('confirm-link');await c.ok('logout');await complete('passli-start');
+ assert.equal(c.state.screen,'login');assert.equal((await c.request('/api/private')).response.status,401);assert.ok((await c.action('notes-save',{notes:'must not write'})).response.status>=400);
+ });

@@ -31,6 +31,7 @@ requires a fresh Passli **LoA 4 signature**, with no old site password prompt.
 - [Complete demo source](demo/README.md): server-enforced accounts, linking,
   unlinking, sessions, real Passli callbacks and an optional local walkthrough.
 - [Executable guide](docs/executables.md): local preview, demo startup and checks.
+- [Disabled-device deployment tests](docs/disabled_devices_deployment_test_suite.md): suspension, selective mobile recovery and live acceptance checklist.
 
 To hand this to an implementation assistant:
 
