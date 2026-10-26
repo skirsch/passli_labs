@@ -337,3 +337,8 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 ### 2026-10-25 - Shared source checkpoint and GitHub reconciliation
 - Preserved raw files/index and saved-work Git history before replacing stale drafts with the reviewed release union. Intentional nonsecret reports, test logs and manifests are checked in.
 - Current source includes API609/app753 and full Demo023 candidates; deployed Demo022 hotfix has its own receipt. Source checkpoint does not grant production approval. Shared runtime files match the exact reviewed candidate; isolated deployment artifacts are unchanged.
+
+### 2026-10-26 - Demo023 checkout publication verified
+- What: Published frozen400bae checkout source after API609/app753.61 local and61 host-image tests passed; public health23 and JS/style hashes matched.
+- Outputs: docs/releases/demo023_checkout.md. Fictional browser cart quantity0 to1 to0 and totals$0 to$50 to$0 verified, unlinked CTA and disabled minus atzero. No customer disclosure/purchase submitted.
+- Next: User acceptance on refreshed pages and mobileCode753; physical-device reset remains unverified.
