@@ -43,3 +43,6 @@ footer { font-size: 11px; color: #6e7781; text-align: center; padding: 0 20px 28
 textarea { display: block; resize: vertical; min-height: 130px; }
 
 .cart-total{font-size:2rem;font-weight:750;margin:28px 0}.checkout-button{font-size:1.4rem;min-height:76px;width:100%;justify-content:center}
+
+.quantity-controls{display:flex;align-items:center;justify-content:flex-start;gap:8px}
+.quantity-controls .quantity-button{width:44px;height:44px;min-height:44px;flex:0 0 44px;padding:0;font-size:24px;line-height:1}
