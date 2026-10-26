@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 13
+Version: 14
 Updated: 2026-10-25
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -134,3 +134,12 @@ confirmation demonstrate cumulative device spending policy. Real mode uses
 structured signed checkout fields; walkthrough approval remains simulated. No
 processor capture is performed. Checkout is not part of the deployed demo019.
 See [the checkout implementation contract](../demo/README.md#card-checkout-local-candidate).
+
+
+The address is delivered directly from the authorized device to
+`/api/checkout-release`; Passli signs a versioned SHA-256 commitment and masked
+card reference. The site checks the exact signed commitment, live provider
+session, current cart and fixed expiry before accepting it. Plaintext address,
+PAN and CVV do not enter Passli signing requests. A retry finishes the same
+approved order without an additional signature/spending reservation. Continue
+checkout on Cart resumes a pending approval or approved purchase review.

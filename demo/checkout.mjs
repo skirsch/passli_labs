@@ -29,6 +29,7 @@ export function checkoutAction(world,body,now,{real=false}={}){
  const approval=world.checkout;
  if(body.action==='checkout-cancel'){world.checkout=null;world.screen='cart';return;}
  if(!approval||approval.id!==body.checkoutId||approval.accountId!==account.id||approval.sessionId!==world.session.id||approval.revision!==cart.revision||approval.expires<=now)fail('Checkout changed or expired. Start again from your cart.');
+ if(body.action==='checkout-resume'){world.screen=approval.status==='approved'?'checkout-confirm':'checkout-wait';return;}
  if(body.action==='checkout-demo-approve'){
   if(real)fail('Simulated checkout approval is unavailable in real mode.');
   if(approval.status!=='pending')fail('Approval already completed.');
@@ -48,6 +49,17 @@ export function checkoutAction(world,body,now,{real=false}={}){
  fail('Unknown checkout action.');
 }
 
+export function disclosureCommitment(selection){
+ const c=selection?.card,a=selection?.address,readable=v=>typeof v==='string'&&v.trim()&&v.length<=512&&!/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(v);
+ if(!c||!a||Object.keys(selection).sort().join(',')!=='address,card'||Object.keys(c).sort().join(',')!=='label,last4,recordId'||Object.keys(a).sort().join(',')!=='city,country,label,postalCode,recordId,region,street'||Object.values(a).some(v=>!readable(v))||!readable(c.recordId)||!readable(c.label)||!/^\d{4}$/.test(c.last4))fail('Invalid checkout information.');
+ const hash=createHash('sha256').update(JSON.stringify(['passli:checkout-address:v1',a.recordId,a.label,a.street,a.city,a.region,a.postalCode,a.country]),'utf8').digest('hex');
+ return {card:{...c},address:{recordId:a.recordId,label:a.label,hash}};
+}
+export function acceptCheckoutDisclosure(world,selection){
+ const checkout=world.checkout;if(!checkout?.commitment||canonical(disclosureCommitment(selection))!==canonical(checkout.commitment))fail('The address or card does not match the signed checkout consent.');
+ checkout.selection=selection;checkout.status='approved';world.screen='checkout-confirm';
+}
+
 // Both the provider attestation and pairwise user signature must bind the exact
 // server-owned cart. Popup messages and client supplied amounts grant no authority.
 export function verifyCheckout(result,jwks,expected,now=Math.floor(Date.now()/1000)){
@@ -61,7 +73,7 @@ export function verifyCheckout(result,jwks,expected,now=Math.floor(Date.now()/10
  if(canonical(claims.publicKey)!==canonical(result.publicKey)||canonical(f.checkout)!==canonical(expected.order)||canonical(f.json)!==canonical({amount:expected.order.maximumAmount,currency:'USD'})||f.contentType!=='text/plain;charset=utf-8'||f.domain!=='passli:text-approval:v1'||f.audience!==expected.origin||f.subject!==expected.subject||f.nonce!==expected.nonce||f.requestId!==expected.requestId||f.requestedLoA!==1||f.requestedAt!==expected.requestedAt||f.expiresAt!==expected.expiresAt||!Number.isInteger(f.issuedAt)||f.issuedAt<f.requestedAt||f.issuedAt>now+30||f.expiresAt<=now||!Number.isInteger(f.requiredLoA)||!Number.isInteger(f.achievedLoA)||f.requiredLoA<1||f.achievedLoA<f.requiredLoA||f.achievedLoA>6)fail('Checkout order, identity, lifetime or LoA changed.');
  const card=f.selection?.card,address=f.selection?.address;
  const readable=v=>typeof v==='string'&&v.trim()&&v.length<=512&&!/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(v);
- if(!card||!address||Object.keys(card).sort().join(',')!=='label,last4,recordId'||Object.keys(address).sort().join(',')!=='city,country,label,postalCode,recordId,region,street'||!readable(card.recordId)||!readable(card.label)||!/^\d{4}$/.test(card.last4)||Object.values(address).some(v=>!readable(v)))fail('Checkout selection is invalid.');
+ if(!card||!address||Object.keys(card).sort().join(',')!=='label,last4,recordId'||Object.keys(address).sort().join(',')!=='hash,label,recordId'||!readable(card.recordId)||!readable(card.label)||!/^\d{4}$/.test(card.last4)||Object.values(address).some(v=>!readable(v))||!/^([a-f0-9]{64})$/.test(address.hash))fail('Checkout selection is invalid.');
  if(result.publicKey?.x!==expected.subject||result.publicKey.kty!=='OKP'||result.publicKey.crv!=='Ed25519'||result.publicKey.d||result.hashAlgorithm!=='SHA-256'||result.signatureAlgorithm!=='Ed25519-over-SHA256'||result.encoding!=='passli-sorted-json-utf8-v1'||createHash('sha256').update(canonical(f)).digest('hex')!==result.hash||createHash('sha256').update(canonical(result.publicKey)).digest('hex')!==result.keyId||!verify(null,Buffer.from(result.hash,'hex'),createPublicKey({key:result.publicKey,format:'jwk'}),Buffer.from(result.userSignature,'base64url')))fail('Checkout user signature failed.');
  return f;
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {createDemo} from '../server.mjs';
 import {freshWorld,act} from '../model.mjs';
-import {checkoutAction,cartView,verifyCheckout} from '../checkout.mjs';
+import {checkoutAction,cartView,verifyCheckout,disclosureCommitment,acceptCheckoutDisclosure} from '../checkout.mjs';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {canonical} from '../unlink.mjs';
 
@@ -13,7 +13,7 @@ test('server-owned $50 cart, cumulative purchases, one-use confirmation, cancell
  run('cart');assert.throws(()=>run('checkout-start'));
  for(let index=0;index<3;index++){
   run('cart-add');assert.equal(cartView(w).totalCents,5000);run('checkout-start');
-  assert.throws(()=>run('purchase'));run('checkout-demo-approve');
+  assert.throws(()=>run('purchase'));run('checkout-demo-approve');act(w,{action:'home'},now);run('cart');run('checkout-resume');assert.equal(w.screen,'checkout-confirm');
   assert.equal(cartView(w).approval.requiredLoA,index===2?4:2);
   run('purchase');assert.equal(cartView(w).purchasedCents,(index+1)*5000);assert.throws(()=>run('purchase'));
  }
@@ -45,15 +45,21 @@ function signedFixture(){
  const order={version:1,orderId:'order',quantity:1,unitAmount:'50.00',maximumAmount:'50.00',currency:'USD'};
  const expected={subject:publicKey.x,origin:'https://demo.passli.app',nonce:'n'.repeat(43),order,requestId:'r'.repeat(43),requestedAt:now,expiresAt:now+600};
  const selection={card:{recordId:'card',label:'My AMEX',last4:'1009'},address:{recordId:'home',label:'My home',street:'50 Example Street',city:'Example City',region:'CA',postalCode:'94000',country:'US'}};
- const fields={domain:'passli:text-approval:v1',contentType:'text/plain;charset=utf-8',audience:expected.origin,subject:expected.subject,requestId:expected.requestId,nonce:expected.nonce,requestedAt:now,issuedAt:now,expiresAt:now+600,requestedLoA:1,requiredLoA:4,achievedLoA:4,checkout:order,selection,json:{amount:'50.00',currency:'USD'},text:'Generated checkout summary'};
+ const fields={domain:'passli:text-approval:v1',contentType:'text/plain;charset=utf-8',audience:expected.origin,subject:expected.subject,requestId:expected.requestId,nonce:expected.nonce,requestedAt:now,issuedAt:now,expiresAt:now+600,requestedLoA:1,requiredLoA:4,achievedLoA:4,checkout:order,selection:disclosureCommitment(selection),json:{amount:'50.00',currency:'USD'},text:'Generated checkout summary'};
  const hash=createHash('sha256').update(canonical(fields)).digest('hex'),keyId=createHash('sha256').update(canonical(publicKey)).digest('hex'),userSignature=sign(null,Buffer.from(hash,'hex'),user.privateKey).toString('base64url');
  const claims={iss:'https://api.passli.app',aud:'demo',sub:expected.subject,nonce:expected.nonce,kind:fields.domain,requestId:expected.requestId,hash,keyId,userSignature,publicKey,achievedLoA:4,requiredLoA:4,iat:now,exp:now+600};
  const header=Buffer.from(JSON.stringify({alg:'EdDSA',kid:'passli-fedcm-v1',typ:'JWT'})).toString('base64url'),payload=Buffer.from(JSON.stringify(claims)).toString('base64url'),message=header+'.'+payload;
- return {result:{fields,publicKey,hash,keyId,userSignature,attestation:message+'.'+sign(null,Buffer.from(message),provider.privateKey).toString('base64url'),encoding:'passli-sorted-json-utf8-v1',hashAlgorithm:'SHA-256',signatureAlgorithm:'Ed25519-over-SHA256'},jwks:{keys:[{...provider.publicKey.export({format:'jwk'}),kid:'passli-fedcm-v1'}]},expected,now};
+ return {result:{fields,publicKey,hash,keyId,userSignature,attestation:message+'.'+sign(null,Buffer.from(message),provider.privateKey).toString('base64url'),encoding:'passli-sorted-json-utf8-v1',hashAlgorithm:'SHA-256',signatureAlgorithm:'Ed25519-over-SHA256'},selection,jwks:{keys:[{...provider.publicKey.export({format:'jwk'}),kid:'passli-fedcm-v1'}]},expected,now};
 }
 test('independent merchant verifies user signature, provider attestation, order, identity, selection, expiry and LoA',()=>{
  const f=signedFixture();assert.equal(verifyCheckout(f.result,f.jwks,f.expected,f.now).selection.card.label,'My AMEX');
  for(const changed of [{...f.expected,order:{...f.expected.order,maximumAmount:'0.01'}},{...f.expected,subject:'wrong'},{...f.expected,nonce:'wrong'},{...f.expected,requestId:'wrong'}])assert.throws(()=>verifyCheckout(f.result,f.jwks,changed,f.now));
  for(const patch of [{selection:{...f.result.fields.selection,card:{recordId:'c',label:'Other card',last4:'0000'}}},{achievedLoA:1},{json:{amount:'1.00',currency:'USD'}}])assert.throws(()=>verifyCheckout({...f.result,fields:{...f.result.fields,...patch}},f.jwks,f.expected,f.now));
  assert.throws(()=>verifyCheckout(f.result,f.jwks,f.expected,f.now+601));assert.throws(()=>verifyCheckout({...f.result,userSignature:'bad'},f.jwks,f.expected,f.now));
+});
+
+
+test('address delivery must match the exact signed commitment before purchase confirmation',()=>{
+ const f=signedFixture(),world={checkout:{commitment:f.result.fields.selection}};assert.throws(()=>acceptCheckoutDisclosure(world,{...f.selection,address:{...f.selection.address,street:'Changed'}}));assert.equal(world.checkout.status,undefined);
+ acceptCheckoutDisclosure(world,f.selection);assert.equal(world.checkout.status,'approved');assert.equal(world.screen,'checkout-confirm');assert.equal(world.checkout.selection.address.street,'50 Example Street');
 });

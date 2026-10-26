@@ -298,3 +298,12 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Command / executable: git status/diff; staged source, artifact and secret-pattern review; normal non-force commit/publication.
 - Results: Source preservation only. No deployment, native build or real account mutation; production demo019 remains unchanged.
 - Next steps: Release writer freeze after commit receipts; finish immutable integration validation and obtain coordinator approval before deployment.
+
+
+## 2026-10-25 - Card checkout local demo021
+
+- What we did: Cart with $50 add/remove, Passli popup authorization of exact cap plus saved-card/address reference, direct signed-commitment address delivery, separate Purchase, resume and receipt/cumulative totals. Card capture remains simulated; real mode requires matching private API605/app748.
+- Command / executable: `cd demo; node --test test/*.test.mjs` (45 passed). Private focused125 checks and typecheck passed. Actual Chrome localhost walkthrough verified $100 at simulated LoA2, approved-order resume, then next $50 at simulated LoA4.
+- Outputs: `demo/checkout.mjs`, `demo/test/checkout.test.mjs`, updated server/adapter/UI and README/demo plan. Private acceptance report `passli/docs/reports/demo021_card_checkout_local.md` records broad web suite26 failures with attribution unknown.
+- Results: Independently verified exact order and both signatures; address must match the signed versioned hash; wrong values, cancellation during async approval, account/expiry changes, replay and duplicate Purchase deny access. No PAN/CVV; plaintext address goes device-to-Demo, not signing API. All data follows the existing account expiry.
+- Next steps: Real saved-record, popup/phone browser acceptance and explicit coordinator release approval. Local only; deployed demo019 unchanged by this task. Checkout020 in preservation checkpoint is superseded by021 privacy correction and must not be deployed.

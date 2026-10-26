@@ -1,4 +1,4 @@
-import {cartView,checkoutAction} from './checkout.mjs';
+import {cartView,checkoutAction,acceptCheckoutDisclosure} from './checkout.mjs';
 import http from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,mkdirSync} from 'node:fs';
@@ -55,6 +55,29 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const path=new URL(req.url,origin).pathname;
+    if(mode==='real'&&path==='/api/checkout-release'){
+      let visitorId,ownsCheckoutJob=false;
+      try{
+        if(req.headers.origin!=='https://passli.app')throw Error('Unrecognized checkout sharing origin.');
+        res.setHeader('Access-Control-Allow-Origin','https://passli.app');res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');
+        if(req.method==='OPTIONS'){res.writeHead(204);res.end();return;}
+        if(req.method!=='POST')return json(405,{error:'Use POST.'});
+        let text='';for await(const chunk of req){text+=chunk;if(Buffer.byteLength(text)>8192)throw Error('Checkout information too large.');}const body=JSON.parse(text);
+        const row=db.prepare('SELECT id,state FROM visitors').all().find(row=>JSON.parse(row.state).checkout?.proof?.requestId===body.id);if(!row)throw Error('Checkout expired or was cancelled.');visitorId=row.id;
+        if(checkoutJobs.has(visitorId))return json(409,{error:'Checkout is being checked. Please try again.'});checkoutJobs.add(visitorId);ownsCheckoutJob=true;
+        const original=JSON.parse(row.state),checkoutId=original.checkout.id,sessionId=original.session?.id;
+        const current=()=>{const row=load.get(visitorId);if(!row)throw Error('Checkout session ended.');const world=JSON.parse(row.state);expire(world,now());if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkoutId||world.checkout.expires<=now()||world.accounts.find(a=>a.id===world.session.accountId)?.cart?.revision!==world.checkout.revision)throw Error('Checkout changed or expired.');return world;};
+        let world=current();
+        if(!world.checkout.commitment){
+          const result=await passli.checkoutResult(world.checkout.proof);world=current();
+          if(!result.fields)throw Error('Complete Passli approval first.');
+          world.checkout.commitment=result.fields.selection;world.checkout.requiredLoA=result.fields.requiredLoA;world.checkout.achievedLoA=result.fields.achievedLoA;world.checkout.status='awaiting-release';save.run(visitorId,JSON.stringify(world),now());
+        }
+        if(await passli.status(world.providerAssociation)!=='active')throw Error('Passli authorization ended.');world=current();
+        acceptCheckoutDisclosure(world,body.selection);save.run(visitorId,JSON.stringify(world),now());return json(200,{received:true});
+      }catch{return json(409,{error:'Checkout information was not accepted. Return to Northstar or retry the same approval.'});}
+      finally{if(ownsCheckoutJob)checkoutJobs.delete(visitorId);}
+    }
     if(mode==='real'&&['/api/pii-challenge','/api/pii-release'].includes(path)) {
       try {
         const caller=req.headers.origin;
@@ -210,7 +233,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         }catch(error){db.exec('ROLLBACK');id=sourceId;throw error;}
         return json(200,{state:view(world),message});
       }
-      if(['cart','cart-add','cart-remove','checkout-start','checkout-status','checkout-cancel','checkout-demo-approve','purchase'].includes(body.action)){
+      if(['cart','cart-add','cart-remove','checkout-start','checkout-status','checkout-resume','checkout-cancel','checkout-demo-approve','purchase'].includes(body.action)){
         if(checkoutJobs.has(id)&&['checkout-start','checkout-status'].includes(body.action))throw Object.assign(Error('Checkout is being checked. Please wait.'),{status:409});
         checkoutAction(world,body,now(),{real:mode==='real'});
         if(mode==='real'&&(body.action==='checkout-start'||body.action==='checkout-status'&&world.checkout.status==='pending')){
@@ -226,7 +249,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
             if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now())throw Error('Checkout changed.');
             if(body.action==='checkout-start'){world.checkout.proof=result;world.checkout.expires=Math.min(world.checkout.expires,result.expiresAt*1000);}
             else if(result.cancelled){world.checkout=null;world.screen='cart';}
-            else if(result.fields){world.checkout.status='approved';world.checkout.selection=result.fields.selection;world.checkout.requiredLoA=result.fields.requiredLoA;world.checkout.achievedLoA=result.fields.achievedLoA;world.screen='checkout-confirm';}
+            else if(result.fields){world.checkout.status='awaiting-release';world.checkout.commitment=result.fields.selection;world.checkout.requiredLoA=result.fields.requiredLoA;world.checkout.achievedLoA=result.fields.achievedLoA;world.screen='checkout-wait';}
           }finally{checkoutJobs.delete(id);}
         }
         persist();return json(200,{state:view(world),...(body.action==='checkout-start'&&mode==='real'?{popupUrl:world.checkout.proof.approvalUrl}:{})});

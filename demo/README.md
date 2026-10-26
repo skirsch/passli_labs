@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 13
+Version: 14
 Updated: 2026-10-25
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -218,3 +218,12 @@ the verified required/achieved LoA separately.
 `checkout.mjs` owns prices, cart revisions, final consumption and independent
 verification of the pairwise user signature and Passli attestation. No PAN or CVV
 is sent to or stored by the demo. Cart/order data expires with the account.
+
+
+The address is delivered directly from the authorized device to
+`/api/checkout-release`; Passli signs a versioned SHA-256 commitment and masked
+card reference. The site checks the exact signed commitment, live provider
+session, current cart and fixed expiry before accepting it. Plaintext address,
+PAN and CVV do not enter Passli signing requests. A retry finishes the same
+approved order without an additional signature/spending reservation. Continue
+checkout on Cart resumes a pending approval or approved purchase review.
