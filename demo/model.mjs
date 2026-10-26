@@ -32,7 +32,7 @@ export function expire(world, now = Date.now()) {
   }
   if (world.session && world.session.expires <= now) {world.session = null; world.pending = null; world.screen = 'login';}
   if (world.setup && world.setup.expires <= now) {world.setup = null; world.pending = null; world.screen = world.session ? 'settings' : 'login';}
-  if (world.pending && world.pending.expires <= now) {world.pending = null; world.screen = world.session ? 'settings' : world.setup ? 'setup' : 'login';}
+  if (world.pending && world.pending.expires <= now) {const checkout=world.pending.action==='checkout';world.pending = null; world.screen = world.session ? checkout?'cart':'settings' : world.setup ? 'setup' : 'login';}
   if (world.session?.method === 'passli' && world.providerStatus === 'suspended') world.screen = world.pending?.action === 'resume' ? 'approval' : 'suspended';
   if (world.session?.method === 'passli' && ['terminated','unavailable'].includes(world.providerStatus)) {world.session = null; world.pending = null; world.screen = 'login';}
   if(world.checkout&&(!world.session||world.checkout.sessionId!==world.session.id||world.checkout.accountId!==world.session.accountId||world.checkout.expires<=now)){world.checkout=null;if(['checkout-wait','checkout-confirm'].includes(world.screen))world.screen=world.session?'cart':'login';}
