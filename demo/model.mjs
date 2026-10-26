@@ -32,7 +32,7 @@ export function expire(world, now = Date.now()) {
   }
   if (world.session && world.session.expires <= now) {world.session = null; world.pending = null; world.screen = 'login';}
   if (world.setup && world.setup.expires <= now) {world.setup = null; world.pending = null; world.screen = world.session ? 'settings' : 'login';}
-  if (world.pending && world.pending.expires <= now) {world.pending = null; world.screen = world.session ? 'settings' : world.setup ? 'setup' : 'login';}
+  if (world.pending && world.pending.expires <= now) {const checkout=world.pending.action==='checkout'||world.pending.returnScreen==='cart';world.pending = null; world.screen = world.session ? checkout?'cart':'settings' : world.setup ? 'setup' : 'login';}
   if (world.session?.method === 'passli' && world.providerStatus === 'suspended') world.screen = world.pending?.action === 'resume' ? 'approval' : 'suspended';
   if (world.session?.method === 'passli' && ['terminated','unavailable'].includes(world.providerStatus)) {world.session = null; world.pending = null; world.screen = 'login';}
   if(world.checkout&&(!world.session||world.checkout.sessionId!==world.session.id||world.checkout.accountId!==world.session.accountId||world.checkout.expires<=now)){world.checkout=null;if(['checkout-wait','checkout-confirm'].includes(world.screen))world.screen=world.session?'cart':'login';}
@@ -144,7 +144,7 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
         const account = requireAccount(world);
         if (account.id !== proof.accountId || world.session.id !== proof.sessionId) fail('The target account changed. Start linking again.');
         if (world.setup && world.setup.subject !== identity) fail('The Passli identity changed during setup.');
-        bind(world,account,identity); world.setup = null; world.screen = 'settings'; return 'Passli is now linked. Your existing account and projects are unchanged.';
+        bind(world,account,identity); world.setup = null; world.screen = proof.returnScreen==='cart'?'cart':'settings'; return 'Passli is now linked. Your existing account and projects are unchanged.';
       }
       if (proof.action === 'register') {
         if (proof.subject && proof.subject !== identity) fail('The Passli account changed. Start again.');
@@ -162,9 +162,11 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
       if (!world.setup) fail('Setup expired. Start a new Passli login.');
       const account = localAccount(world,body,now); session(world,account,'password',null,now); world.screen = 'link-confirm'; return '';
     }
+    case 'cart-link':
     case 'settings-link': {
       const account=requireAccount(world);world.setup=null;
-      pending(world,'link',now,{accountId:account.id,sessionId:world.session.id});return '';
+      if(action==='cart-link'&&(world.screen!=='cart'||account.identities.length))fail('Open an unlinked account’s cart to link Passli for checkout.');
+      pending(world,'link',now,{accountId:account.id,sessionId:world.session.id,...(action==='cart-link'?{returnScreen:'cart'}:{})});return '';
     }
     case 'confirm-link': {
       if (world.screen !== 'link-confirm') fail('Confirm the named account before linking.');
@@ -205,7 +207,7 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
       requireAccount(world);if (world.session.method !== 'passli') fail('Sign in using Passli first.');
       world.providerStatus=action === 'terminate' ? 'terminated' : 'unavailable';world.session=null;world.pending=null;world.setup=null;world.screen='login';return action === 'terminate' ? 'Your site session ended. Your account is still linked.' : 'Provider authorization could not be verified. The site session ended.';
     case 'logout': world.inflight=null;world.session=null;world.setup=null;world.pending=null;world.screen='login';return 'You are signed out of Northstar. Your account links are unchanged.';
-    case 'cancel': world.deletion=null;world.registration=null;world.inflight=null;world.pending=null;world.setup=null;world.screen=world.session ? world.providerStatus === 'suspended' ? 'suspended' : 'settings' : 'login';return '';
+    case 'cancel': {const cart=world.pending?.returnScreen==='cart';world.deletion=null;world.registration=null;world.inflight=null;world.pending=null;world.setup=null;world.screen=world.session ? world.providerStatus === 'suspended' ? 'suspended' : cart?'cart':'settings' : 'login';return '';}
     default: fail('Unknown demo action.');
   }
 }
