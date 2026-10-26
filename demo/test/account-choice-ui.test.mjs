@@ -14,10 +14,11 @@ function page(state,{reply}={}){
  return {html:element('#app').innerHTML,listeners,sent,navigated,elements};
 }
 
-test('Link Passli stays available in both linked and unlinked settings',()=>{
+test('settings shows exactly one Link or Unlink Passli action matching current linkage',()=>{
  for(const linked of [false,true]){
   const ui=page({mode:'walkthrough',screen:'settings',account:{id:'account',name:'Account',linked}});
-  assert.match(ui.html,/data-action="settings-link"[^>]*>Link Passli<\/button>/);
+  assert.equal(ui.html.includes('data-action="settings-link"'),!linked);
+  assert.equal((ui.html.match(/data-action="(?:settings-link|unlink)"/g)||[]).length,1);
   assert.equal(ui.html.includes('data-action="unlink"'),linked);
  }
 });
