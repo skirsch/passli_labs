@@ -66,14 +66,14 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         const row=db.prepare('SELECT id,state FROM visitors').all().find(row=>JSON.parse(row.state).checkout?.proof?.requestId===body.id);if(!row)throw Error('Checkout expired or was cancelled.');visitorId=row.id;
         if(checkoutJobs.has(visitorId))return json(409,{error:'Checkout is being checked. Please try again.'});checkoutJobs.add(visitorId);ownsCheckoutJob=true;
         const original=JSON.parse(row.state),checkoutId=original.checkout.id,sessionId=original.session?.id;
-        const current=()=>{const row=load.get(visitorId);if(!row)throw Error('Checkout session ended.');const world=JSON.parse(row.state);expire(world,now());if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkoutId||world.checkout.expires<=now()||world.accounts.find(a=>a.id===world.session.accountId)?.cart?.revision!==world.checkout.revision)throw Error('Checkout changed or expired.');return world;};
+        const current=()=>{const row=load.get(visitorId);if(!row)throw Error('Checkout session ended.');const world=JSON.parse(row.state);expire(world,now());if(!authorizedAccount(world)||!authorizedAccount(world).identities.includes((world.checkout?.association||world.providerAssociation)?.subject)||world.session.id!==sessionId||world.checkout?.id!==checkoutId||world.checkout.expires<=now()||world.accounts.find(a=>a.id===world.session.accountId)?.cart?.revision!==world.checkout.revision)throw Error('Checkout changed or expired.');return world;};
         let world=current();
         if(!world.checkout.commitment){
           const result=await passli.checkoutResult(world.checkout.proof);world=current();
           if(!result.fields)throw Error('Complete Passli approval first.');
           world.checkout.commitment=result.fields.selection;world.checkout.requiredLoA=result.fields.requiredLoA;world.checkout.achievedLoA=result.fields.achievedLoA;world.checkout.status='awaiting-release';save.run(visitorId,JSON.stringify(world),now());
         }
-        if(await passli.status(world.providerAssociation)!=='active')throw Error('Passli authorization ended.');world=current();
+        if(await passli.status(world.checkout.association||world.providerAssociation)!=='active')throw Error('Passli authorization ended.');world=current();
         acceptCheckoutDisclosure(world,body.selection);save.run(visitorId,JSON.stringify(world),now());return json(200,{received:true});
       }catch{return json(409,{error:'Checkout information was not accepted. Return to Northstar or retry the same approval.'});}
       finally{if(ownsCheckoutJob)checkoutJobs.delete(visitorId);}
@@ -120,6 +120,24 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     forgetExpired(id,world);
     const persist=()=>{forgetExpired(id,world);save.run(id,JSON.stringify(world),now());};
     const rotate=()=>{const previous=id;id=random();db.prepare('UPDATE bindings SET visitor=? WHERE visitor=?').run(id,previous);db.prepare('DELETE FROM visitors WHERE id=?').run(previous);setCookie();};
+    const checkoutUrl=()=>world.checkout.proof.approvalUrl+'&signatureReturn=demo';
+    async function createCheckoutProof(association){
+      const checkout=world.checkout,sessionId=world.session.id,visitor=id;
+      checkout.association=association;persist();checkoutJobs.add(visitor);
+      const current=()=>{
+        const row=load.get(visitor);if(!row)throw Error('Checkout session ended.');
+        world=JSON.parse(row.state);expire(world,now());
+        if(!authorizedAccount(world)||!authorizedAccount(world).identities.includes(association.subject)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now()||world.accounts.find(a=>a.id===checkout.accountId)?.cart?.revision!==checkout.revision)throw Error('Checkout changed while awaiting Passli.');
+      };
+      try{
+        const proof=await passli.createCheckout(association,checkout.order);current();
+        if(await passli.status(association)!=='active')throw Error('Passli authorization ended.');current();
+        world.checkout.proof=proof;world.checkout.expires=Math.min(world.checkout.expires,proof.expiresAt*1000);persist();
+      }catch(error){
+        const row=load.get(visitor);if(row){const latest=JSON.parse(row.state);if(latest.checkout?.id===checkout.id&&!latest.checkout.proof){world=latest;world.checkout=null;world.screen=world.session?'cart':'login';persist();}}
+        throw error;
+      }finally{checkoutJobs.delete(visitor);}
+    }
     const syncBindings=()=>{
       if(mode!=='real')return;
       db.prepare('DELETE FROM bindings WHERE visitor=?').run(id);
@@ -145,7 +163,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         // the approval deadline, cleanup, or an already consumed callback.
         // Only a matching live transaction may cancel current site state.
         const matches=proof?.state&&url.searchParams.get('state')===proof.state;
-        if(matches)act(world,{action:'cancel'},now());
+        if(matches){act(world,{action:'cancel'},now());if(proof.action==='checkout'&&authorizedAccount(world))world.screen='cart';}
         world.message=matches&&proof.action==='unlink'?'Unlink cancelled. Passli is still linked.':'Passli request was not completed. Your account and links are unchanged.';
         persist();return redirect();
       }
@@ -161,6 +179,13 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         const reserved=load.get(id);if(!reserved)throw Error('Site transaction cancelled.');world=JSON.parse(reserved.state);forgetExpired(id,world);
         if(world.inflight!==proof.id || world.pending)throw Error('Site transaction changed.');
         world.inflight=null;
+        if(proof.action==='checkout'){
+          const account=authorizedAccount(world);
+          if(!account||!account.identities.includes(result.identity)||account.id!==proof.accountId||world.session.id!==proof.sessionId||world.screen!=='approval'||account.cart?.revision!==proof.revision)throw Error('Checkout account or cart changed.');
+          checkoutAction(world,{action:'checkout-start'},now(),{real:true});
+          await createCheckoutProof(result.association);
+          res.writeHead(303,{Location:checkoutUrl()});res.end();return;
+        }
         sweep();const matches=linkedAccounts(result.identity),owner=matches[0];
         if(proof.action==='login'&&matches.length===1) {
           const original=load.get(owner.visitor);if(!original)throw Error('Linked account is unavailable.');
@@ -181,7 +206,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         if(world.session?.method==='passli')world.providerAssociation=result.association;
         db.exec('BEGIN IMMEDIATE');try{rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
         return redirect();
-      } catch {const current=load.get(id);if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?'settings':world.setup?'setup':'login';}world.message=proof.expires<=now()?'Your request timed out. Please try again.':'Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
+      } catch {const current=load.get(id);if(proof.action==='checkout'&&!current)return redirect();if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?proof.action==='checkout'||proof.returnScreen==='cart'?'cart':'settings':world.setup?'setup':'login';}if(proof.action==='checkout'&&world.checkout&&!world.checkout.proof){world.checkout=null;world.screen=world.session?'cart':'login';}world.message=proof.expires<=now()?'Your request timed out. Please try again.':'Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
     }
     async function checkProvider(){
       if(mode!=='real'||world.session?.method!=='passli')return;
@@ -235,24 +260,40 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       }
       if(['cart','cart-add','cart-remove','checkout-start','checkout-status','checkout-resume','checkout-cancel','checkout-demo-approve','purchase'].includes(body.action)){
         if(checkoutJobs.has(id)&&['checkout-start','checkout-status'].includes(body.action))throw Object.assign(Error('Checkout is being checked. Please wait.'),{status:409});
+        if(mode==='real'&&body.action==='checkout-start'&&world.session?.method==='password'){
+          const account=authorizedAccount(world);
+          if(!account?.identities.length)throw Object.assign(Error('Link your Passli account for faster checkout.'),{status:409});
+          if(!account?.cart?.quantity)throw Object.assign(Error('Add an item to your cart first.'),{status:409});
+          if(world.pending||world.checkout)throw Object.assign(Error('Finish or cancel your current checkout first.'),{status:409});
+          world.pending={id:random(),action:'checkout',accountId:account.id,sessionId:world.session.id,revision:account.cart.revision,expires:Math.min(now()+60000,world.session.expires,account.expiresAt)};
+          world.screen='approval';const redirect=passli.begin(world.pending);persist();return json(200,{state:view(world),redirect});
+        }
+        if(mode==='real'&&world.checkout&&['purchase','checkout-status','checkout-resume'].includes(body.action)){
+          const checkoutId=world.checkout.id,sessionId=world.session?.id,association=world.checkout.association||world.providerAssociation;
+          const status=await passli.status(association),latest=load.get(id);if(!latest)throw Error('Checkout session ended.');world=JSON.parse(latest.state);expire(world,now());
+          if(!authorizedAccount(world)||world.session?.id!==sessionId||world.checkout?.id!==checkoutId)throw Object.assign(Error('Checkout changed.'),{status:409});
+          if(status!=='active'){world.checkout=null;world.screen='cart';persist();throw Object.assign(Error('Passli checkout authorization ended. Start checkout again.'),{status:409});}
+        }
         checkoutAction(world,body,now(),{real:mode==='real'});
-        if(mode==='real'&&(body.action==='checkout-start'||body.action==='checkout-status'&&world.checkout.status==='pending')){
-          if(body.action==='checkout-status'&&!world.checkout.proof)throw Error('Checkout could not be started. Cancel and try again.');
+        if(mode==='real'&&body.action==='checkout-start'){
+          await createCheckoutProof(world.providerAssociation);return json(200,{state:view(world),redirect:checkoutUrl()});
+        }
+        if(mode==='real'&&body.action==='checkout-status'&&world.checkout.status==='pending'){
+          if(!world.checkout.proof)throw Error('Checkout could not be started. Cancel and try again.');
           const checkout=world.checkout,sessionId=world.session.id;persist();checkoutJobs.add(id);
           try{
-            const result=body.action==='checkout-start'?await passli.createCheckout(world.providerAssociation,checkout.order):await passli.checkoutResult(checkout.proof);
+            const result=await passli.checkoutResult(checkout.proof);
             const current=load.get(id);if(!current)throw Error('Checkout session ended.');world=JSON.parse(current.state);expire(world,now());
             if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now()||world.accounts.find(a=>a.id===checkout.accountId)?.cart?.revision!==checkout.revision)throw Error('Checkout changed while awaiting Passli.');
             // Recheck provider state after the network call before granting confirmation.
-            if(await passli.status(world.providerAssociation)!=='active')throw Error('Passli authorization ended.');
+            if(await passli.status(checkout.association||world.providerAssociation)!=='active')throw Error('Passli authorization ended.');
             const latest=load.get(id);if(!latest)throw Error('Checkout session ended.');world=JSON.parse(latest.state);expire(world,now());
             if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now())throw Error('Checkout changed.');
-            if(body.action==='checkout-start'){world.checkout.proof=result;world.checkout.expires=Math.min(world.checkout.expires,result.expiresAt*1000);}
-            else if(result.cancelled){world.checkout=null;world.screen='cart';}
+            if(result.cancelled){world.checkout=null;world.screen='cart';}
             else if(result.fields){world.checkout.status='awaiting-release';world.checkout.commitment=result.fields.selection;world.checkout.requiredLoA=result.fields.requiredLoA;world.checkout.achievedLoA=result.fields.achievedLoA;world.screen='checkout-wait';}
           }finally{checkoutJobs.delete(id);}
         }
-        persist();return json(200,{state:view(world),...(body.action==='checkout-start'&&mode==='real'?{popupUrl:world.checkout.proof.approvalUrl}:{})});
+        persist();return json(200,{state:view(world)});
       }
       const previousSession=world.session?.id;
       const message=body.action==='reset'?'Fresh fictional demo data is ready.':act(world,body,now());

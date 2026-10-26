@@ -1,0 +1,376 @@
+TAP version 13
+# Subtest: Link Passli stays available in both linked and unlinked settings
+ok 1 - Link Passli stays available in both linked and unlinked settings
+  ---
+  duration_ms: 8.9044
+  type: 'test'
+  ...
+# Subtest: cart shows the correct Passli action for linked=false
+ok 2 - cart shows the correct Passli action for linked=false
+  ---
+  duration_ms: 11.0258
+  type: 'test'
+  ...
+# Subtest: cart shows the correct Passli action for linked=true
+ok 3 - cart shows the correct Passli action for linked=true
+  ---
+  duration_ms: 4.9746
+  type: 'test'
+  ...
+# Subtest: checkout navigates the current page to api.passli.app without a transient popup
+ok 4 - checkout navigates the current page to api.passli.app without a transient popup
+  ---
+  duration_ms: 6.227
+  type: 'test'
+  ...
+# Subtest: checkout navigates the current page to passli.app without a transient popup
+ok 5 - checkout navigates the current page to passli.app without a transient popup
+  ---
+  duration_ms: 3.2445
+  type: 'test'
+  ...
+# Subtest: a rejected checkout remains visibly on the cart with an actionable message
+ok 6 - a rejected checkout remains visibly on the cart with an actionable message
+  ---
+  duration_ms: 4.5645
+  type: 'test'
+  ...
+# Subtest: account picker escapes account labels and submits explicit membership selection with its current transaction
+ok 7 - account picker escapes account labels and submits explicit membership selection with its current transaction
+  ---
+  duration_ms: 5.0512
+  type: 'test'
+  ...
+# Subtest: server-owned $50 cart, cumulative purchases, one-use confirmation, cancellation, edit, account switch and expiry
+ok 8 - server-owned $50 cart, cumulative purchases, one-use confirmation, cancellation, edit, account switch and expiry
+  ---
+  duration_ms: 6.4546
+  type: 'test'
+  ...
+# Subtest: HTTP cart uses CSRF and session; real mode requires a link and cannot simulate checkout
+ok 9 - HTTP cart uses CSRF and session; real mode requires a link and cannot simulate checkout
+  ---
+  duration_ms: 181.9096
+  type: 'test'
+  ...
+# Subtest: independent merchant verifies user signature, provider attestation, order, identity, selection, expiry and LoA
+ok 10 - independent merchant verifies user signature, provider attestation, order, identity, selection, expiry and LoA
+  ---
+  duration_ms: 8.7453
+  type: 'test'
+  ...
+# Subtest: address delivery must match the exact signed commitment before purchase confirmation
+ok 11 - address delivery must match the exact signed commitment before purchase confirmation
+  ---
+  duration_ms: 1.6887
+  type: 'test'
+  ...
+# Subtest: v2 consent binds the recipient name and person record; v1 pending orders remain compatible
+ok 12 - v2 consent binds the recipient name and person record; v1 pending orders remain compatible
+  ---
+  duration_ms: 2.1547
+  type: 'test'
+  ...
+# Subtest: notes belong to the authenticated account, survive logout, and neither change expiry nor accept stale-account writes
+ok 13 - notes belong to the authenticated account, survive logout, and neither change expiry nor accept stale-account writes
+  ---
+  duration_ms: 161.5064
+  type: 'test'
+  ...
+# Subtest: real Passli restores account notes in another browser and SQLite restart; deletion removes that context
+ok 14 - real Passli restores account notes in another browser and SQLite restart; deletion removes that context
+  ---
+  duration_ms: 183.1267
+  type: 'test'
+  ...
+# Subtest: deleting an unlinked account removes only that account, signs out, rotates the cookie and rejects replay
+ok 15 - deleting an unlinked account removes only that account, signs out, rotates the cookie and rejects replay
+  ---
+  duration_ms: 26.4957
+  type: 'test'
+  ...
+# Subtest: linked deletion requires fresh LoA4 unlink, then explicit bounded deletion confirmation; cancelled approval keeps account/link
+ok 16 - linked deletion requires fresh LoA4 unlink, then explicit bounded deletion confirmation; cancelled approval keeps account/link
+  ---
+  duration_ms: 35.4624
+  type: 'test'
+  ...
+# Subtest: Passli-session deletion uses restricted confirmation after unlink and deletes persistent global binding; later identity starts unbound
+ok 17 - Passli-session deletion uses restricted confirmation after unlink and deletes persistent global binding; later identity starts unbound
+  ---
+  duration_ms: 137.6204
+  type: 'test'
+  ...
+# Subtest: legacy registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed
+ok 18 - legacy registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed
+  ---
+  duration_ms: 42.2311
+  type: 'test'
+  ...
+# Subtest: inline registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed
+ok 19 - inline registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed
+  ---
+  duration_ms: 43.3566
+  type: 'test'
+  ...
+# Subtest: first-use linking preserves account and returning login bypasses chooser
+ok 20 - first-use linking preserves account and returning login bypasses chooser
+  ---
+  duration_ms: 29.1756
+  type: 'test'
+  ...
+# Subtest: real mode uses provider callbacks, persists cross-browser bindings and rejects simulated approval
+ok 21 - real mode uses provider callbacks, persists cross-browser bindings and rejects simulated approval
+  ---
+  duration_ms: 44.8509
+  type: 'test'
+  ...
+# Subtest: cancelled setup reappears; registration binds a separate account atomically
+ok 22 - cancelled setup reappears; registration binds a separate account atomically
+  ---
+  duration_ms: 38.0063
+  type: 'test'
+  ...
+# Subtest: settings linking adds the same identity to multiple accounts and returning login requires an explicit account choice
+ok 23 - settings linking adds the same identity to multiple accounts and returning login requires an explicit account choice
+  ---
+  duration_ms: 45.0514
+  type: 'test'
+  ...
+# Subtest: real multi-account login lists only current linked accounts across browsers, checks membership and preserves each account context
+ok 24 - real multi-account login lists only current linked accounts across browsers, checks membership and preserves each account context
+  ---
+  duration_ms: 66.7275
+  type: 'test'
+  ...
+# Subtest: account picker cancellation, original deadline and provider suspension grant no session
+ok 25 - account picker cancellation, original deadline and provider suspension grant no session
+  ---
+  duration_ms: 40.9491
+  type: 'test'
+  ...
+# Subtest: selection rechecks unlink/deletion and concurrent cancellation after provider authorization begins
+ok 26 - selection rechecks unlink/deletion and concurrent cancellation after provider authorization begins
+  ---
+  duration_ms: 62.5377
+  type: 'test'
+  ...
+# Subtest: legacy single-account SQLite bindings migrate without losing notes; multi-account choice survives restart and expires accounts independently
+ok 27 - legacy single-account SQLite bindings migrate without losing notes; multi-account choice survives restart and expires accounts independently
+  ---
+  duration_ms: 196.6851
+  type: 'test'
+  ...
+# Subtest: simultaneous account selections consume the login once without resurrecting a stale browser continuation
+ok 28 - simultaneous account selections consume the login once without resurrecting a stale browser continuation
+  ---
+  duration_ms: 32.6199
+  type: 'test'
+  ...
+# Subtest: unlink preserves account, invalidates Passli session and never restores binding automatically
+ok 29 - unlink preserves account, invalidates Passli session and never restores binding automatically
+  ---
+  duration_ms: 27.4604
+  type: 'test'
+  ...
+# Subtest: suspension denies APIs, wrong identity cannot resume, original deadline survives resume
+ok 30 - suspension denies APIs, wrong identity cannot resume, original deadline survives resume
+  ---
+  duration_ms: 23.2404
+  type: 'test'
+  ...
+# Subtest: expiry, identity switch, CSRF, installation controls and visitor isolation fail closed
+ok 31 - expiry, identity switch, CSRF, installation controls and visitor isolation fail closed
+  ---
+  duration_ms: 32.238
+  type: 'test'
+  ...
+# Subtest: termination/provider failure deny access while keeping bindings
+ok 32 - termination/provider failure deny access while keeping bindings
+  ---
+  duration_ms: 22.2409
+  type: 'test'
+  ...
+# Subtest: concurrent replay commits a registration once; SQLite persists visitor bindings
+ok 33 - concurrent replay commits a registration once; SQLite persists visitor bindings
+  ---
+  duration_ms: 77.226
+  type: 'test'
+  ...
+# Subtest: any email with demo can link and unlink; invalid credentials create nothing
+ok 34 - any email with demo can link and unlink; invalid credentials create nothing
+  ---
+  duration_ms: 18.0485
+  type: 'test'
+  ...
+# Subtest: fixed account lifetime survives activity and relogin; only expired accounts are forgotten
+ok 35 - fixed account lifetime survives activity and relogin; only expired accounts are forgotten
+  ---
+  duration_ms: 17.209
+  type: 'test'
+  ...
+# Subtest: idle cleanup deletes registered accounts and real bindings; returning identity starts setup again
+ok 36 - idle cleanup deletes registered accounts and real bindings; returning identity starts setup again
+  ---
+  duration_ms: 151.8217
+  type: 'test'
+  ...
+# Subtest: unlink has no password bypass and needs a fresh same-identity LoA4 proof; cancellation and expiry preserve binding
+ok 37 - unlink has no password bypass and needs a fresh same-identity LoA4 proof; cancellation and expiry preserve binding
+  ---
+  duration_ms: 38.1202
+  type: 'test'
+  ...
+# Subtest: account deletion cannot remove additional bindings without their own unlink approvals or follow a changed session
+ok 38 - account deletion cannot remove additional bindings without their own unlink approvals or follow a changed session
+  ---
+  duration_ms: 19.6639
+  type: 'test'
+  ...
+# Subtest: provider cancellation returns to settings after approval expiry and never consumes a newer transaction
+ok 39 - provider cancellation returns to settings after approval expiry and never consumes a newer transaction
+  ---
+  duration_ms: 25.4473
+  type: 'test'
+  ...
+# Subtest: late callback returns a timeout on the site without redeeming or consuming a newer request
+ok 40 - late callback returns a timeout on the site without redeeming or consuming a newer request
+  ---
+  duration_ms: 18.9749
+  type: 'test'
+  ...
+# Subtest: real Passli session without a provider association fails closed on state and protected writes
+ok 41 - real Passli session without a provider association fails closed on state and protected writes
+  ---
+  duration_ms: 18.5943
+  type: 'test'
+  ...
+# Subtest: real checkout checks current provider session and cart after asynchronous approval; cancellation wins
+ok 42 - real checkout checks current provider session and cart after asynchronous approval; cancellation wins
+  ---
+  duration_ms: 42.8011
+  type: 'test'
+  ...
+# Subtest: linked password customer goes through Passli to its checkout page without changing merchant accounts; revoked checkout cannot purchase
+ok 43 - linked password customer goes through Passli to its checkout page without changing merchant accounts; revoked checkout cannot purchase
+  ---
+  duration_ms: 21.2961
+  type: 'test'
+  ...
+# Subtest: late checkout authorization cannot survive cancel
+ok 44 - late checkout authorization cannot survive cancel
+  ---
+  duration_ms: 16.9095
+  type: 'test'
+  ...
+# Subtest: late checkout authorization cannot survive cart-change
+ok 45 - late checkout authorization cannot survive cart-change
+  ---
+  duration_ms: 14.0676
+  type: 'test'
+  ...
+# Subtest: late checkout authorization cannot survive account-switch
+ok 46 - late checkout authorization cannot survive account-switch
+  ---
+  duration_ms: 13.8445
+  type: 'test'
+  ...
+# Subtest: late checkout authorization cannot survive logout
+ok 47 - late checkout authorization cannot survive logout
+  ---
+  duration_ms: 14.9745
+  type: 'test'
+  ...
+# Subtest: late checkout authorization cannot survive expiry
+ok 48 - late checkout authorization cannot survive expiry
+  ---
+  duration_ms: 13.7418
+  type: 'test'
+  ...
+# Subtest: cart linking approve returns to the same cart without losing items
+ok 49 - cart linking approve returns to the same cart without losing items
+  ---
+  duration_ms: 12.8817
+  type: 'test'
+  ...
+# Subtest: cart linking cancel returns to the same cart without losing items
+ok 50 - cart linking cancel returns to the same cart without losing items
+  ---
+  duration_ms: 17.2459
+  type: 'test'
+  ...
+# Subtest: cart linking expire returns to the same cart without losing items
+ok 51 - cart linking expire returns to the same cart without losing items
+  ---
+  duration_ms: 11.8912
+  type: 'test'
+  ...
+# Subtest: checkout must be approved by an identity linked to this merchant account
+ok 52 - checkout must be approved by an identity linked to this merchant account
+  ---
+  duration_ms: 14.5524
+  type: 'test'
+  ...
+# Subtest: home greets the full authorized name, safely escaping it and handling absent names
+ok 53 - home greets the full authorized name, safely escaping it and handling absent names
+  ---
+  duration_ms: 14.3753
+  type: 'test'
+  ...
+# Subtest: only registration requests personal information in the Passli consent UI
+ok 54 - only registration requests personal information in the Passli consent UI
+  ---
+  duration_ms: 5.5372
+  type: 'test'
+  ...
+# Subtest: verifier rejects signature, identity, transaction, lifetime and assurance mismatches
+ok 55 - verifier rejects signature, identity, transaction, lifetime and assurance mismatches
+  ---
+  duration_ms: 9.2476
+  type: 'test'
+  ...
+# Subtest: Direct adapter binds S256 PKCE, exact redirect, nonce and live grant confirmation
+ok 56 - Direct adapter binds S256 PKCE, exact redirect, nonce and live grant confirmation
+  ---
+  duration_ms: 1.8918
+  type: 'test'
+  ...
+# Subtest: unlink verifier requires both signatures, operation and exact binding at LoA4; adapter never treats login as unlink
+ok 57 - unlink verifier requires both signatures, operation and exact binding at LoA4; adapter never treats login as unlink
+  ---
+  duration_ms: 9.6928
+  type: 'test'
+  ...
+# Subtest: displayed and health version matches the released package
+ok 58 - displayed and health version matches the released package
+  ---
+  duration_ms: 1.9984
+  type: 'test'
+  ...
+# Subtest: visible Passli session polls into suspension, removes private context, and never starts recovery pushes
+ok 59 - visible Passli session polls into suspension, removes private context, and never starts recovery pushes
+  ---
+  duration_ms: 10.7923
+  type: 'test'
+  ...
+# Subtest: real shows the running version on every HTML page, outside changing account content
+ok 60 - real shows the running version on every HTML page, outside changing account content
+  ---
+  duration_ms: 95.8511
+  type: 'test'
+  ...
+# Subtest: walkthrough shows the running version on every HTML page, outside changing account content
+ok 61 - walkthrough shows the running version on every HTML page, outside changing account content
+  ---
+  duration_ms: 32.4097
+  type: 'test'
+  ...
+1..61
+# tests 61
+# suites 0
+# pass 61
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2171.4721

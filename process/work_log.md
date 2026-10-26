@@ -307,3 +307,28 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: `demo/checkout.mjs`, `demo/test/checkout.test.mjs`, updated server/adapter/UI and README/demo plan. Private acceptance report `passli/docs/reports/demo021_card_checkout_local.md` records broad web suite26 failures with attribution unknown.
 - Results: Independently verified exact order and both signatures; address must match the signed versioned hash; wrong values, cancellation during async approval, account/expiry changes, replay and duplicate Purchase deny access. No PAN/CVV; plaintext address goes device-to-Demo, not signing API. All data follows the existing account expiry.
 - Next steps: Real saved-record, popup/phone browser acceptance and explicit coordinator release approval. Local only; deployed demo019 unchanged by this task. Checkout020 in preservation checkpoint is superseded by021 privacy correction and must not be deployed.
+
+## 2026-10-25 Same-tab Passli checkout correction
+- What we did: reproduced blank popup/password-session rejection in live Chrome; replaced checkout popup with same-tab Passli review, order-scoped Direct continuation without linking, saved recipient-name consent/hash and prominent total.
+- Command / executable: frozen web+RP381, provider85 including actual protected owned-to-Demo adapter, Demo55, npm run typecheck; zero failures/skips.
+- Outputs: private process/checkout_same_tab_* logs; docs/reports/checkout_same_tab.md; process/releases/checkout_same_tab manifests/receipt; private d225cc67 / Labs1e12931 source refs.
+- Results: source hashes stable post-gates, no PAN/CVV/raw name/address in signing; stale callbacks, tampering, revocation and replay reject. Updated UI tested synthetically, real browser/phone acceptance not claimed.
+- Next steps: coordinator holds release slots/activation during human OPAQUE repair. No version/lock/push/build/deploy writes; preserve concurrent work and integrate scoped source only after release coordination.
+
+## 2026-10-25 Linked-cart checkout steering
+- What we did: unlinked carts show Link your Passli account for faster checkout; existing explicit link flow returns to same cart on success/cancel/expiry. Server requires link before checkout and rejects another unlinked approval identity.
+- Command / executable: frozen checkout-linked web/RP, provider/auth/remote/spending, Demo tests and TypeScript.
+- Outputs: private process/checkout_linked_* logs and process/releases/checkout_linked receipts; docs/reports/checkout_same_tab.md v2/specv4. Source private bcf1c4da / Labs c254b3a7 supersedes earlier unlinked-checkout allowance.
+- Next steps: preserve OPAQUE deployment hold and concurrent changes; assign release versions/approval centrally. No package/version/lock writes, push/build/deploy/charge.
+
+## 2026-10-25 Single Passli settings action
+- What we did: per direct human correction, settings now shows Link Passli only while unlinked, replacing it with Unlink Passli after linking. Updated existing UI assertion and stale docs.
+- Command / executable: node --test --test-reporter=tap test/*.test.mjs (Demo).
+- Outputs: process-settings-passli-button.tap; scoped source/handoff refs provided to coordinator.
+- Results: all61 tests pass, zero failures/skips; one action asserted in each linkage state.
+- Next steps: include in pending linked-cart/same-tab release; OPAQUE deployment hold remains. No package/version/lock metadata or push/build/deploy writes.
+
+## 2026-10-25 Compact cart quantity controls
+- What we did: replaced add/remove text actions with left-aligned 44px +/minus buttons below Quantity, including accessible labels and 0/100 limits.
+- Command / executable: Demo node --test test/*.test.mjs; frozen scoped source handed to coordinator.
+- Results / next steps: preserve pending checkout/settings scope and deployment hold; no package/version/lock or activation changes.
