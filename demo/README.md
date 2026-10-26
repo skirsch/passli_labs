@@ -1,7 +1,7 @@
 # Northstar: complete site integration demo
 
-Version: 11
-Updated: 2026-10-24
+Version: 13
+Updated: 2026-10-25
 
 Northstar is a fictional site with an actual server-side account/linking model.
 The default service mode uses real Passli Direct authentication. Registration requests name, phone and email with Passli consent and authorized device delivery. Login and linking request no profile data. It uses a site-specific public subject and verifies the signed assertion
@@ -59,11 +59,14 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
    fresh approval → Jordan's separate account. No full account exists before
    registration and binding complete.
 3. **Returning login:** sign out of Northstar, then Continue with Passli. An
-   existing binding opens the same account without the chooser, including from
-   another browser after real proof of that identity.
+   identity with one linked account opens it directly, including from another
+   browser after real proof. Multiple linked accounts appear in Choose your
+   account; select one to access its own projects and saved notes.
 4. **Link from settings:** ordinary fictional Northstar login → Settings →
    Link Passli → fresh Passli proof → linked. The settings button starts the
-   transaction immediately, without another site confirmation screen.
+   transaction immediately, without another site confirmation screen. It remains
+   available when already linked: the same identity/account pair is idempotent,
+   and the same identity can link to additional authenticated Northstar accounts.
 5. **Unlink:** Settings → Unlink Passli → immediately open Passli for fresh
    Passli unlink signature at LoA 4 or higher. No old site password is requested.
    Projects remain; Passli-established sessions end. A
@@ -193,3 +196,25 @@ Visible Passli sessions poll authorization, and the server rechecks the provider
 For a disabled device, open the Passli mobile app and tap **Disabled devices**. Review the list, select the devices to restore, and press **Re-enable selected**. Browser recovery does not send repeated approval pushes. The provider must verify this explicit phone operation at the required assurance before the original eligible site session can resume. Recovery never extends the original 30-minute account deadline.
 
 See the [deployment acceptance checklist](../docs/disabled_devices_deployment_test_suite.md). The published reference is demo0.1.15 with API592/mobile726 or later compatible releases; physical-phone acceptance is separate from automated checks.
+
+
+## Card checkout (local candidate)
+
+Open **Cart**, add or remove $50 items, then choose **Checkout with Passli**.
+In real mode, sign in using Passli first. The popup asks for the exact maximum
+USD amount and your saved CreditCard and Address records. It shares a masked
+card reference and the displayed shipping address, then Northstar shows a separate
+**Purchase** confirmation. No card is charged; a real processor integration is
+outside this demonstration. These checkout changes require the corresponding
+Passli API and web candidate and are not deployed with demo019.
+
+Passli applies its device payment policy to cumulative authorized amounts. An
+approved amount counts even if the final Purchase is abandoned. A successful
+over-limit approval resets the existing allowance. The walkthrough uses fictional
+My AMEX / My home records and a simulated $100 allowance with LoA 2 within the
+allowance and LoA 4 over it. The page reports cumulative completed purchases and
+the verified required/achieved LoA separately.
+
+`checkout.mjs` owns prices, cart revisions, final consumption and independent
+verification of the pairwise user signature and Passli attestation. No PAN or CVV
+is sent to or stored by the demo. Cart/order data expires with the account.

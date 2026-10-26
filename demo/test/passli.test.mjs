@@ -11,7 +11,7 @@ function token(claims={},header={}) {const encode=x=>Buffer.from(JSON.stringify(
 const options={issuer:base.iss,clientId:'demo',nonce:base.nonce};
 test('only registration requests personal information in the Passli consent UI',()=>{
  const provider=createPassli({origin:'https://demo.passli.app'});
- for(const action of ['login','link','register'])assert.equal(new URL(provider.begin({action})).searchParams.get('request_pii'),action==='register'?'true':'false');
+ for(const action of ['login','link','register']){const url=new URL(provider.begin({action}));assert.equal(url.searchParams.get('request_pii'),action==='register'?'true':'false');assert.equal(url.searchParams.get('pii_flow'),action==='register'?'inline':null);}
 });
 test('verifier rejects signature, identity, transaction, lifetime and assurance mismatches',()=>{
   assert.equal(verifyAssertion(token(),jwks,options).sub,base.sub);

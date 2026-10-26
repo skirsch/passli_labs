@@ -12,6 +12,7 @@ export function freshWorld(now = Date.now()) {
   return {csrf:random(), created:now, installed:true, screen:'login', accounts:[{id:random(), name:'Avery Chen', email:'avery@example.test', identities:[],createdAt:now,expiresAt:now+accountLifetime}], session:null, setup:null, pending:null, providerStatus:'active'};
 }
 export function expire(world, now = Date.now()) {
+  if(world.accountChoice?.expires<=now){world.accountChoice=null;world.screen=world.session?'home':'login';world.message='Your request timed out. Please try again.';}
   if(world.deletion&&(world.deletion.expires<=now||!world.accounts.some(a=>a.id===world.deletion.accountId)||(world.session?.id||null)!==world.deletion.sessionId)){
     world.deletion=null;if(world.screen==='delete-confirm')world.screen=world.session?'settings':'login';
   }
@@ -34,6 +35,7 @@ export function expire(world, now = Date.now()) {
   if (world.pending && world.pending.expires <= now) {world.pending = null; world.screen = world.session ? 'settings' : world.setup ? 'setup' : 'login';}
   if (world.session?.method === 'passli' && world.providerStatus === 'suspended') world.screen = world.pending?.action === 'resume' ? 'approval' : 'suspended';
   if (world.session?.method === 'passli' && ['terminated','unavailable'].includes(world.providerStatus)) {world.session = null; world.pending = null; world.screen = 'login';}
+  if(world.checkout&&(!world.session||world.checkout.sessionId!==world.session.id||world.checkout.accountId!==world.session.accountId||world.checkout.expires<=now)){world.checkout=null;if(['checkout-wait','checkout-confirm'].includes(world.screen))world.screen=world.session?'cart':'login';}
 }
 function accountFor(world) {return world.accounts.find(a => a.id === world.session?.accountId);}
 export function authorizedAccount(world) {
@@ -44,7 +46,7 @@ export function authorizedAccount(world) {
 export function publicState(world) {
   const account = authorizedAccount(world);
   const deletion=world.deletion&&world.accounts.find(a=>a.id===world.deletion.accountId);
-  return {mode:'walkthrough', modeLabel:'Interactive walkthrough · Simulated Passli approvals', csrf:world.csrf, installed:world.installed, screen:world.screen, sessionMethod:world.session?.method || null, setup:!!world.setup, pendingAction:world.pending?.action, transaction:world.pending?.id || null, deletion:deletion?{name:deletion.name,email:deletion.email}:null, piiRequest:world.registration?{id:world.registration.release.id}:null, demoAccounts:world.accounts.map(a=>({name:a.name,email:a.email})), account:account ? {id:account.id,notes:account.notes||'',name:account.name,email:account.email,phone:account.phone,linked:account.identities.length > 0,expiresAt:account.expiresAt} : null};
+  return {mode:'walkthrough', modeLabel:'Interactive walkthrough · Simulated Passli approvals', csrf:world.csrf, installed:world.installed, screen:world.screen, sessionMethod:world.session?.method || null, setup:!!world.setup, pendingAction:world.pending?.action, transaction:world.pending?.id || world.accountChoice?.id || null, accountChoices:world.accountChoice?.accounts.map(({id,name,email})=>({id,name,email}))||[], deletion:deletion?{name:deletion.name,email:deletion.email}:null, piiRequest:world.registration?{id:world.registration.release.id}:null, demoAccounts:world.accounts.map(a=>({name:a.name,email:a.email})), account:account ? {id:account.id,notes:account.notes||'',name:account.name,email:account.email,phone:account.phone,linked:account.identities.length > 0,expiresAt:account.expiresAt} : null};
 }
 function requireAccount(world) {
   const account = authorizedAccount(world);
@@ -72,8 +74,6 @@ function checkProof(world, body, now, verifiedIdentity) {
   return proof;
 }
 function bind(world, account, identity) {
-  const owner = world.accounts.find(a => a.identities.includes(identity));
-  if (owner && owner.id !== account.id) fail('That Passli identity is already linked to another Northstar account. No accounts were moved or merged.');
   if (!account.identities.includes(identity)) {account.identities.push(identity);(account.linkIds??={})[identity]=random();}
 }
 function localAccount(world, body, now) {
@@ -87,10 +87,18 @@ function localAccount(world, body, now) {
   return account;
 }
 
-export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnlink=false,personalInformation} = {}) {
+export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnlink=false,personalInformation,loginAccounts} = {}) {
   expire(world, now);
   const action = body.action;
+  if(!['select-account','installation'].includes(action))world.accountChoice=null;
   switch (action) {
+    case 'select-account': {
+      const choice=world.accountChoice;
+      if(world.session||!choice||world.screen!=='account-choice'||choice.id!==body.transaction||choice.expires<=now||!choice.accounts.some(account=>account.id===body.accountId))fail('Choose an account from the current Passli login.');
+      const account=world.accounts.find(account=>account.id===body.accountId&&account.identities.includes(choice.subject));
+      if(!account)fail('That account is no longer linked. Start a new Passli login.');
+      world.accountChoice=null;world.setup=null;session(world,account,'passli',choice.subject,now);world.screen='home';return '';
+    }
     case 'notes-save': {
       const account=requireAccount(world);
       if(body.accountId!==account.id)fail('The account changed. Reload before saving your note.');
@@ -112,7 +120,9 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
       const proof = checkProof(world,body,now,verifiedIdentity);
       const identity = body.identity;
       if (proof.action === 'login') {
-        const bound = world.accounts.find(a => a.identities.includes(identity));
+        const matches=loginAccounts??world.accounts.filter(a=>a.identities.includes(identity));
+        if(matches.length>1){world.session=null;world.setup=null;world.accountChoice={id:random(),subject:identity,expires:proof.expires,accounts:matches.map(({id,name,email})=>({id,name,email}))};world.screen='account-choice';return '';}
+        const bound = world.accounts.find(a => a.id===matches[0]?.id&&a.identities.includes(identity));
         if (bound) {session(world,bound,'passli',identity,now); world.setup = null; world.screen = 'home';}
         else {world.session = null; world.setup = {subject:identity,expires:now+5*minute}; world.screen = 'setup';}
         return '';

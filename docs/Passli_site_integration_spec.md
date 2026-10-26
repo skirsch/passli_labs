@@ -1,7 +1,7 @@
 # Passli Site Integration Specification
 
-Version: 14
-Updated: 2026-10-24
+Version: 19
+Updated: 2026-10-25
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
 ## Purpose and use
@@ -128,9 +128,21 @@ Passli visibility checks are not backend authentication controls.
 
 ## 4. Account lookup and first-use setup
 
-**Already bound:** sign directly into the linked local account, subject to
-current authorization and local account policy. Show no chooser or conflict
-prompt during ordinary login. A disabled account is not an unbound identity.
+**Account resolution (2026-10-25):** one verified Passli identity may link to
+multiple local accounts. With exactly one current linked account, sign into it
+directly, subject to current authorization and local account policy. With more
+than one, show **Choose your account** listing only the accounts linked to the
+verified identity, using recognizable account names and email addresses.
+Do not select the first match automatically. A disabled account is not an
+unbound identity.
+
+The account picker is a short-lived, server-owned continuation of the verified
+login, bound to that identity, browser and original deadline. Until selection,
+grant no ordinary site session or protected account data. On selection, recheck
+the exact live binding, account existence/expiry and provider authorization,
+consume the continuation once and rotate the site session. Forged account IDs,
+foreign browsers, replay, cancellation, expiry, unlink and account deletion must
+not grant access. Account names and emails are display values, never authority.
 
 **Unbound:** issue only a restricted setup session and show:
 
@@ -164,14 +176,18 @@ unlinked login proof as authority to attach a login method. Account or identity
 switches require restarting explicitly. Commit the binding atomically, preserve
 all existing account data/permissions, and show success.
 
-An additional Link Passli action may be offered from authenticated account
-settings. That click is the site's explicit consent: start the fresh linking
+Keep Link Passli available from authenticated account settings even when this
+account or the selected Passli identity is already linked. That click is the
+site's explicit consent: start the fresh linking
 transaction immediately, without another site confirmation page or button.
 Display the target account in settings before the click. Required Passli proof
 and any higher configured approval policy still apply; no binding is committed
 until fresh proof is verified. Linking the same identity to the same account is idempotent. Reject
-conflicting settings-based links or races without moving or merging accounts;
-these guards do not add a chooser to ordinary already-bound login.
+invalid or stale settings-based links or races without moving or merging accounts.
+The same Passli identity may be linked to another authenticated local account;
+preserve each account's data, permissions and independent binding. Unlinking or
+deleting one account must not remove its other account links. Enforce uniqueness
+on each identity/account pair, rather than on the identity alone.
 
 ### Create new account
 
@@ -187,6 +203,86 @@ Bind the verified identity, account creation and completed choice atomically.
 Enforce uniqueness and idempotency so retries or concurrent tabs cannot create
 multiple accounts or orphan records. Expired setup needs fresh authentication.
 Then create the ordinary local session.
+
+### One-page personal-information release
+
+For first-time or unset consent, after the RP establishes its normal authenticated site session, sharing uses one
+standalone Passli page in the current tab. Show the RP origin and the readable
+Name, Email and Phone selectors, preselecting the user's saved/default values.
+Provide exactly two actions: **Cancel** and **Allow and continue**. Do not open a
+new window or popup, mount the account-management/PII editor, show a separate
+"delivered" page, or require a second confirmation. The displayed name is the
+selected Person's full name.
+
+PII release adds no LoA step-up or phone approval/push. It uses the existing active,
+authorized Passli/RP session and explicit field selection. Normal site login
+requirements still apply when establishing that session. This does not weaken
+unlink's mandatory fresh LoA 4 proof, device recovery or unrelated operations.
+A locked, expired, suspended, wrong-account or unauthorized device must fail closed
+on this same page, with Cancel available to return to the RP.
+
+Cancel cancels the release and returns to the requesting RP without delivering
+information or creating an account/link. Allow and continue saves the field
+choices, delivers exactly the reviewed values directly from the authorized device
+to the RP over HTTPS, and immediately returns to the RP's next page after its
+receipt. Broker cleanup must not strand a user after a confirmed RP receipt.
+Keep errors and timeout messages inline. Never display plaintext in redirect URLs.
+
+Current protocol: Direct registration/login requests use `request_pii=true` and
+`pii_flow=inline` (FedCM supports `piiFlow: "inline"` in its params). Consent is
+deferred until after login, and the issued PII release contains `requestedFields`
+and initially empty `fields` only when consent is needed. When saved permissions
+are usable, `consentRemembered: true` and `selectionRequired: false` attest the
+current allowed `fields`; the device claims, validates, decrypts and delivers
+automatically, then returns directly to the RP without a consent screen. An already authenticated RP can request another
+release using `/fedcm/pii/start` with its existing session/grant association; do
+not restart login just to share information. The dedicated release page is
+`https://passli.app/?piiRelease=<opaque request>&piiSite=<verified RP origin>`.
+
+The signed device `select` action sends only the request ID, challenge, expected
+PII version and selected record IDs/null decisions. Passli resolves authorized
+record fields and binds the exact selection, current permission policy/version
+and claiming device. The RP must check the delivery token and live provider
+status, including the exact approved output fields; merely being among the
+original requested fields is insufficient. Revocation, expiry and replay checks
+remain mandatory. Legacy fixed-field releases remain supported during migration.
+
+Return through the RP's fixed `/auth/passli/pii-return` endpoint with opaque request
+ID and `delivered`/`cancelled` outcome. Validate against that browser's RP session;
+never trust the outcome query as proof of delivery. Only the actual accepted
+receipt can create an account or advance setup. Preserve the user's RP context,
+and never accept an arbitrary caller-supplied return URL.
+
+
+Returning releases with remembered consent show a read-only summary of exactly
+the validated allowed values and the verified RP hostname. State that the user
+previously approved sharing those values with that site. Keep the complete summary
+visible for at least one second after painting, then return automatically after
+the RP receipt, without another approval button. Saved Deny fields are omitted;
+if all are denied, say that no personal information is shared. The viewing pause
+never extends the fixed release deadline. Account changes, navigation, expiry or
+revocation clear the summary and prevent stale delivery; recheck authorization
+after the pause before sending. The standalone page fills the viewport on desktop
+and mobile, including while loading.
+
+### Personal-information permission scope
+
+Remember name, email and phone delivery permissions for the Passli account and
+verified relying party (RP), not for a browser, browser session or device. For
+example, authorizing these fields for github.com applies when that same RP
+requests them from any authenticated, authorized browser. A new browser does not
+require a new field-sharing permission solely because it is a new browser.
+Preserve the selected Profile and Person scope and record choices; this does not
+grant access to another account, Profile, Person or RP. Resolve RP identity from
+the registered client and its verified origin, never a caller-supplied site name
+or a matching hostname suffix. Do not merge unrelated RP registrations by name.
+
+Ask/Allow/Deny changes and revocation apply across browsers. Each delivery still
+requires a fresh, unexpired request for that RP, the current allowed records and
+an authorized device able to decrypt them. Device authentication, local unlock,
+transaction review and single-device delivery claims are separate from durable
+RP consent; a delivery token or an earlier browser session is not reusable consent.
+Never use browser storage as the authoritative permission store.
 
 ### Reminders and durable state
 
@@ -315,7 +411,15 @@ Verify the real supported flow and report evidence for:
   requesting accounts or approval. Include locked/logged-out installs, late
   discovery and stale/unloaded extension contexts. A forged presentation signal
   never grants authenticated access.
-- Known binding: correct account, no chooser. Unbound identity: both choices,
+- Exactly one linked account: direct login. Multiple linked accounts: list only
+  that verified identity's accounts, require explicit selection and deny protected
+  access until completion. Test each account's independent notes/data, another
+  browser, server restart, original expiry, cancellation, foreign IDs, replay,
+  simultaneous selections and unlink/deletion while choosing.
+- Keep Link Passli visible on already-linked accounts; same-pair linking is
+  idempotent and linking another authenticated account preserves previous links.
+  Migrate existing single-account binding storage without losing links or data.
+- Unbound identity: both choices,
   restricted setup, signed-out cancellation and reminders until completion.
 - Existing account: full normal authentication, named confirmation and fresh
   identity-bound linking. Email matches never create associations.

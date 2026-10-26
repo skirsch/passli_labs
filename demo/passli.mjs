@@ -1,3 +1,4 @@
+import {verifyCheckout} from './checkout.mjs';
 import {verifyUnlink} from './unlink.mjs';
 import https from 'node:https';
 import {createHash,createPublicKey,verify} from 'node:crypto';
@@ -33,7 +34,7 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
   return {
     begin(proof) {
       proof.state=random();proof.nonce=random();proof.verifier=random();
-      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':'1',request_pii:proof.action==='register'?'true':'false',...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
+      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':'1',request_pii:proof.action==='register'?'true':'false',...(proof.action==='register'?{pii_flow:'inline'}:{}),...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
       return issuer+'/direct/login?'+parameters;
     },
     async complete(proof,code) {
@@ -47,9 +48,19 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
       if(status.active!==true)throw Error('Passli authorization is no longer active.');
       return {identity:claims.sub,association,...(proof.action==='register'?{personalInformation:claims.personalInformation,piiRelease:claims.piiRelease}:{})};
     },
+    async createCheckout(association,order) {
+      const nonce=random(),created=await request(issuer+'/fedcm/signatures/create',{method:'POST',body:{...association,checkout:order,json:{amount:order.maximumAmount,currency:'USD'},requiredLoA:1,nonce}});
+      if(typeof created.requestId!=='string'||created.approvalUrl!=='https://passli.app/?signatureRequest='+created.requestId||typeof created.resultSecret!=='string'||!Number.isInteger(created.requestedAt)||created.expiresAt!==created.requestedAt+600)throw Error('Invalid checkout response.');
+      return {...created,nonce,subject:association.subject,origin,order};
+    },
+    async checkoutResult(proof) {
+      const result=await request(issuer+'/fedcm/signatures/result',{method:'POST',body:{requestId:proof.requestId,resultSecret:proof.resultSecret}});
+      if(result.pending||result.cancelled)return result;
+      return {fields:verifyCheckout(result.result,await request(issuer+'/.well-known/jwks.json'),proof)};
+    },
     async authorizeDisclosure(association,body) {
       const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:{...association,piiRelease:{id:body.id,deliveryToken:body.deliveryToken}},timeout:3000});
-      return status.active===true;
+      return status;
     },
     async status(association) {
       try {const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:association,timeout:3000});return status.active===true?'active':status.suspended===true?'suspended':'terminated';}

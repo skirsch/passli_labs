@@ -1,6 +1,7 @@
 :root { color-scheme: light; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2328; background: #fff; }
 * { box-sizing: border-box; }
 body { margin: 0; }
+.demo-version { padding: 4px 24px; background: #f6f8fa; color: #59636e; font-size: 12px; font-variant-numeric: tabular-nums; }
 button, input, select, textarea { font: inherit; }
 button, a, select { -webkit-tap-highlight-color: transparent; }
 a { color: #0969da; text-decoration: none; } a:hover { text-decoration: underline; }
@@ -40,3 +41,5 @@ footer { font-size: 11px; color: #6e7781; text-align: center; padding: 0 20px 28
 @media (pointer: coarse) { .provider, .primary, .secondary, .danger, input, select { min-height: 44px; } }
 
 textarea { display: block; resize: vertical; min-height: 130px; }
+
+.cart-total{font-size:2rem;font-weight:750;margin:28px 0}.checkout-button{font-size:1.4rem;min-height:76px;width:100%;justify-content:center}

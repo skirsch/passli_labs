@@ -1,3 +1,4 @@
+import {cartView,checkoutAction} from './checkout.mjs';
 import http from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,mkdirSync} from 'node:fs';
@@ -8,6 +9,7 @@ import {version} from './version.mjs';
 import {createPassli} from './passli.mjs';
 import {validatePiiRelease,validateDelivery,publicRelease} from './pii.mjs';
 
+const bodyCheckoutAction=text=>{try{return /^(checkout-|cart|purchase)/.test(JSON.parse(text).action)}catch{return false}};
 const here=dirname(fileURLToPath(import.meta.url));
 export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',now=Date.now,mode='walkthrough',provider,publicPrefix='',cleanupInterval=15000}={}) {
   if (!['real','walkthrough'].includes(mode)) throw Error('Unknown demo mode.');
@@ -16,10 +18,19 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
   if (database !== ':memory:') mkdirSync(dirname(resolve(database)),{recursive:true});
   const db=new DatabaseSync(database);
   db.exec('PRAGMA journal_mode=WAL; PRAGMA secure_delete=ON; CREATE TABLE IF NOT EXISTS visitors (id TEXT PRIMARY KEY, state TEXT NOT NULL, updated INTEGER NOT NULL)');
-  db.exec('CREATE TABLE IF NOT EXISTS bindings (subject TEXT PRIMARY KEY, visitor TEXT NOT NULL, account TEXT NOT NULL)');
+  db.exec('CREATE TABLE IF NOT EXISTS bindings (subject TEXT NOT NULL, visitor TEXT NOT NULL, account TEXT NOT NULL, PRIMARY KEY(subject,account))');
+  if(db.prepare('PRAGMA table_info(bindings)').all().filter(column=>column.pk).length===1){
+    db.exec('BEGIN IMMEDIATE; ALTER TABLE bindings RENAME TO bindings_single_account; CREATE TABLE bindings (subject TEXT NOT NULL, visitor TEXT NOT NULL, account TEXT NOT NULL, PRIMARY KEY(subject,account)); INSERT INTO bindings SELECT subject,visitor,account FROM bindings_single_account; DROP TABLE bindings_single_account; COMMIT;');
+  }
   const load=db.prepare('SELECT state FROM visitors WHERE id=?'),save=db.prepare('INSERT INTO visitors VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated=excluded.updated');
   const removeOld=db.prepare('DELETE FROM visitors WHERE updated < ?');
   const bindingFor=db.prepare('SELECT visitor,account FROM bindings WHERE subject=?');
+  const linkedAccounts=subject=>bindingFor.all(subject).flatMap(binding=>{
+    const row=load.get(binding.visitor);if(!row)return [];
+    const linked=JSON.parse(row.state);expire(linked,now());
+    const account=linked.accounts.find(account=>account.id===binding.account&&account.identities.includes(subject));
+    return account?[{id:account.id,name:account.name,email:account.email,visitor:binding.visitor}]:[];
+  });
   const forgetExpired=(id,world)=>{
     expire(world,now());
     for(const binding of db.prepare('SELECT account FROM bindings WHERE visitor=?').all(id))
@@ -34,10 +45,11 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     removeOld.run(now()-86400000);
   };
   sweep();const cleanup=setInterval(sweep,cleanupInterval);cleanup.unref();
-  const view=world=>({...publicState(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
+  const view=world=>({...publicState(world),cart:cartView(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
   const files=new Map([['/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
+  for(const file of files.values())if(file.type.startsWith('text/html'))file.body=Buffer.from(file.body.toString().replaceAll('{{DEMO_VERSION}}',version));
   if(publicPrefix)files.get('/').body=Buffer.from(files.get('/').body.toString().replace('href="/"',`href="${publicPrefix}/"`));
-  let swept=0;const rates=new Map();
+  let swept=0;const rates=new Map(),checkoutJobs=new Set();
   const server=http.createServer(async(req,res)=>{
     const json=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
@@ -59,7 +71,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         if(req.method==='GET'&&path==='/api/pii-challenge')return json(200,publicRelease(release));
         if(req.method!=='POST'||path!=='/api/pii-release')return json(405,{error:'Unsupported sharing method.'});
         validateDelivery(body,release);
-        if(!await passli.authorizeDisclosure(registration.association,body))throw Error('Sharing authorization was revoked or changed.');
+        const authorization=await passli.authorizeDisclosure(registration.association,body);if(!(authorization===true||authorization?.active===true)||release.requestedFields&&(!Array.isArray(authorization.outputs)||JSON.stringify([...authorization.outputs].sort())!==JSON.stringify(Object.keys(body.values).sort())))throw Error('Sharing authorization was revoked or changed.');
         // Re-read after authorization: cancellation, another tab and expiry win.
         const current=load.get(row.id);if(!current)throw Error('Registration was cancelled.');world=JSON.parse(current.state);expire(world,now());
         if(world.registration?.release.id!==requestId||world.registration.proof.id!==registration.proof.id||world.screen!=='profile-sharing'||world.session||bindingFor.get(registration.identity))throw Error('Registration changed. Start again.');
@@ -73,7 +85,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     if(mode==='real'&&path==='/walkthrough') {res.writeHead(308,{Location:'/walkthrough/'});res.end();return;}
     if (path==='/health' && req.method==='GET') return json(200,{ok:true,version,mode});
     if (files.has(path) && ['GET','HEAD'].includes(req.method)) {const file=files.get(path);res.writeHead(200,{'Content-Type':file.type});res.end(req.method==='HEAD'?undefined:file.body);return;}
-    if (!['/api/state','/api/action','/api/private','/auth/passli/callback'].includes(path)) return json(404,{error:'Not found'});
+    if (!['/api/state','/api/action','/api/private','/auth/passli/callback','/auth/passli/pii-return'].includes(path)) return json(404,{error:'Not found'});
     if (req.method!==(path==='/api/action'?'POST':'GET')) return json(405,{error:'Method not allowed'});
     const cookies=Object.fromEntries((req.headers.cookie || '').split(';').map(s=>s.trim().split('=')));
     let id=cookies[cookieName];
@@ -92,6 +104,16 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       for(const account of world.accounts)for(const identity of account.identities)insert.run(identity,id,account.id);
     };
     if (now()-swept>60000) {sweep();swept=now();for (const [key,r] of rates) if (r.until<=now()) rates.delete(key);}
+    if(path==='/auth/passli/pii-return'){
+      const returned=new URL(req.url,origin);
+      if(world.registration?.release.id===returned.searchParams.get('id')){
+        if(returned.searchParams.get('outcome')==='cancelled'){act(world,{action:'cancel'},now());world.screen='register';world.message='Personal information sharing cancelled.';}
+        else if(world.registration.expires<=now()){world.registration=null;world.screen='register';world.message='Your request timed out. Please try again.';}
+        else world.message='Personal information was not received. Please try again.';
+        persist();
+      }
+      res.writeHead(303,{Location:'/'});res.end();return;
+    }
     if (path==='/auth/passli/callback') {
       const url=new URL(req.url,origin),proof=world.pending;
       const redirect=()=>{res.writeHead(303,{Location:'/'});res.end();};
@@ -116,11 +138,11 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         const reserved=load.get(id);if(!reserved)throw Error('Site transaction cancelled.');world=JSON.parse(reserved.state);forgetExpired(id,world);
         if(world.inflight!==proof.id || world.pending)throw Error('Site transaction changed.');
         world.inflight=null;
-        sweep();const owner=bindingFor.get(result.identity);
-        if(proof.action==='login'&&owner) {
+        sweep();const matches=linkedAccounts(result.identity),owner=matches[0];
+        if(proof.action==='login'&&matches.length===1) {
           const original=load.get(owner.visitor);if(!original)throw Error('Linked account is unavailable.');
-          world=JSON.parse(original.state);id=owner.visitor;world.session=null;world.setup=null;world.pending=null;
-        } else if(owner && (owner.visitor!==id || owner.account!==proof.accountId)) throw Error('This Passli identity is already linked to another account.');
+          const installed=world.installed;world=JSON.parse(original.state);world.installed=installed;id=owner.visitor;world.session=null;world.setup=null;world.pending=null;
+        } else if(proof.action==='register'&&owner) throw Error('This Passli identity was linked while registration was pending. Start a new login.');
         if(['link','register','unlink'].includes(proof.action)) {
           const current=load.get(id);if(!current)throw Error('Site transaction is unavailable.');world=JSON.parse(current.state);expire(world,now());
           if(['link','unlink'].includes(proof.action)&&world.session?.id!==proof.sessionId)throw Error('Site account changed during linking.');
@@ -131,7 +153,8 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
           world.screen='profile-sharing';world.pending=null;rotate();persist();res.writeHead(303,{Location:'https://passli.app/?'+new URLSearchParams({piiRelease:result.piiRelease.id,piiSite:origin})});res.end();return;
         }
         world.pending=proof;
-        act(world,{action:'approve',transaction:proof.id,identity:result.identity},now(),{verifiedIdentity:result.identity,verifiedUnlink:result.unlinkVerified===true,personalInformation:result.personalInformation});
+        act(world,{action:'approve',transaction:proof.id,identity:result.identity},now(),{verifiedIdentity:result.identity,verifiedUnlink:result.unlinkVerified===true,personalInformation:result.personalInformation,loginAccounts:matches});
+        if(world.accountChoice)world.accountChoice.association=result.association;
         if(world.session?.method==='passli')world.providerAssociation=result.association;
         db.exec('BEGIN IMMEDIATE');try{rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
         return redirect();
@@ -147,11 +170,16 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       persist();
     }
     if(path==='/api/state'||path==='/api/private')await checkProvider();
+    if(mode==='real'&&path==='/api/state'&&world.accountChoice){
+      const current=new Map(linkedAccounts(world.accountChoice.subject).map(account=>[account.id,account]));
+      world.accountChoice.accounts=world.accountChoice.accounts.filter(account=>current.has(account.id)).map(account=>{const {id,name,email}=current.get(account.id);return {id,name,email};});
+      if(!world.accountChoice.accounts.length){world.accountChoice=null;world.screen='login';world.message='No linked accounts remain. Start a new Passli login.';}
+    }
     if (path==='/api/state') {const message=world.message;delete world.message;persist();return json(200,{...view(world),message});}
     if (path==='/api/private') {persist();const account=authorizedAccount(world);return account?json(200,{accountId:account.id,notes:account.notes||'',projects:['Website refresh','Autumn launch','Personal notes']}):json(401,{error:'Current site authorization is required.'});}
     if (req.headers.origin!==origin || req.headers['x-demo-csrf']!==world.csrf || !String(req.headers['content-type']).startsWith('application/json')) return json(403,{error:'Invalid request origin or CSRF proof.'});
     const rate=rates.get(id)||{count:0,until:now()+60000};rates.set(id,rate);if (++rate.count>120) return json(429,{error:'Too many demo actions. Wait a minute.'});
-    let text='';
+    let text='',selecting=false;
     try {
       for await (const chunk of req) {text+=chunk;if (Buffer.byteLength(text)>16384) throw Object.assign(Error('Request too large.'),{status:413});}
       const body=JSON.parse(text);
@@ -164,6 +192,45 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       if(mode==='real'&&['approve','suspend','terminate','provider-error','installation','reset'].includes(body.action)&&body.action!=='installation')throw Object.assign(Error('Simulation controls are unavailable in real Passli mode.'),{status:403});
       if(mode==='real'&&body.action==='resume-start')throw Object.assign(Error('Open the Passli mobile app and choose Disabled devices to review and re-enable this device.'),{status:423});
       if (body.action==='reset') world=freshWorld(now());
+      if(mode==='real'&&body.action==='select-account'){
+        selecting=true;
+        const choice=world.accountChoice;
+        if(world.session||!choice||choice.expires<=now()||choice.id!==body.transaction||!choice.accounts.some(account=>account.id===body.accountId))throw Object.assign(Error('Choose an account from the current Passli login.'),{status:409});
+        const status=choice.association?await passli.status(choice.association):'unavailable';
+        const current=load.get(id);if(!current)throw Object.assign(Error('Login selection expired.'),{status:409});world=JSON.parse(current.state);expire(world,now());
+        if(status!=='active'||world.accountChoice?.id!==choice.id||world.session)throw Object.assign(Error('This Passli login is no longer authorized. Start again.'),{status:409});
+        const target=linkedAccounts(choice.subject).find(account=>account.id===body.accountId);
+        if(!target)throw Object.assign(Error('That account is no longer linked. Start a new Passli login.'),{status:409});
+        const sourceId=id;
+        const installed=world.installed;world=JSON.parse(load.get(target.visitor).state);world.installed=installed;expire(world,now());world.session=null;world.setup=null;world.pending=null;world.inflight=null;world.accountChoice=choice;world.screen='account-choice';
+        const message=act(world,body,now());world.providerAssociation=choice.association;
+        db.exec('BEGIN IMMEDIATE');try{
+          if(sourceId!==target.visitor){const source=JSON.parse(load.get(sourceId).state);source.accountChoice=null;source.screen='login';save.run(sourceId,JSON.stringify(source),now());}
+          id=target.visitor;rotate();syncBindings();persist();db.exec('COMMIT');
+        }catch(error){db.exec('ROLLBACK');id=sourceId;throw error;}
+        return json(200,{state:view(world),message});
+      }
+      if(['cart','cart-add','cart-remove','checkout-start','checkout-status','checkout-cancel','checkout-demo-approve','purchase'].includes(body.action)){
+        if(checkoutJobs.has(id)&&['checkout-start','checkout-status'].includes(body.action))throw Object.assign(Error('Checkout is being checked. Please wait.'),{status:409});
+        checkoutAction(world,body,now(),{real:mode==='real'});
+        if(mode==='real'&&(body.action==='checkout-start'||body.action==='checkout-status'&&world.checkout.status==='pending')){
+          if(body.action==='checkout-status'&&!world.checkout.proof)throw Error('Checkout could not be started. Cancel and try again.');
+          const checkout=world.checkout,sessionId=world.session.id;persist();checkoutJobs.add(id);
+          try{
+            const result=body.action==='checkout-start'?await passli.createCheckout(world.providerAssociation,checkout.order):await passli.checkoutResult(checkout.proof);
+            const current=load.get(id);if(!current)throw Error('Checkout session ended.');world=JSON.parse(current.state);expire(world,now());
+            if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now()||world.accounts.find(a=>a.id===checkout.accountId)?.cart?.revision!==checkout.revision)throw Error('Checkout changed while awaiting Passli.');
+            // Recheck provider state after the network call before granting confirmation.
+            if(await passli.status(world.providerAssociation)!=='active')throw Error('Passli authorization ended.');
+            const latest=load.get(id);if(!latest)throw Error('Checkout session ended.');world=JSON.parse(latest.state);expire(world,now());
+            if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now())throw Error('Checkout changed.');
+            if(body.action==='checkout-start'){world.checkout.proof=result;world.checkout.expires=Math.min(world.checkout.expires,result.expiresAt*1000);}
+            else if(result.cancelled){world.checkout=null;world.screen='cart';}
+            else if(result.fields){world.checkout.status='approved';world.checkout.selection=result.fields.selection;world.checkout.requiredLoA=result.fields.requiredLoA;world.checkout.achievedLoA=result.fields.achievedLoA;world.screen='checkout-confirm';}
+          }finally{checkoutJobs.delete(id);}
+        }
+        persist();return json(200,{state:view(world),...(body.action==='checkout-start'&&mode==='real'?{popupUrl:world.checkout.proof.approvalUrl}:{})});
+      }
       const previousSession=world.session?.id;
       const message=body.action==='reset'?'Fresh fictional demo data is ready.':act(world,body,now());
       let redirect;
@@ -171,6 +238,8 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       db.exec('BEGIN IMMEDIATE');try{if(body.action==='delete-account-confirm'||world.session?.id&&world.session.id!==previousSession)rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
       return json(200,{state:view(world),message,redirect});
     } catch(error) {
+      if(bodyCheckoutAction(text)){const current=load.get(id);if(current)world=JSON.parse(current.state);}
+      if(selecting){const current=load.get(id);if(!current)return json(409,{message:'This Passli login was already completed or cancelled. Start again.'});world=JSON.parse(current.state);}
       // A failed/replayed proof is consumed, but account changes are never partial.
       if (world.screen==='approval' && !world.pending) world.screen=world.session ? world.providerStatus==='suspended'?'suspended':'settings' : world.setup?'setup':'login';
       persist();return json(error.status || 400,{state:view(world),message:error instanceof SyntaxError?'Invalid JSON.':error.message});

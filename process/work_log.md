@@ -211,6 +211,14 @@
 - Next steps: reload Passli and restart signup for fresh web712 UI; physical phone acceptance remains separate. Server-rendered permission pages cannot show decrypted private values; readable review is on the authorized device.
 
 
+## 2026-10-24 - Demo version in upper left
+
+- Request: display the demo version in the upper-left corner.
+- Change: server renders its running version in an accessible top-left strip on main and walkthrough pages; demo package/runtime incremented to 0.1.12.
+- Validation: npm test: 24 passed, zero failures; local Chrome confirmed visible v0.1.12.
+- Result: source prepared and pushed separately from concurrent notes work; deployment remains pending.
+
+
 ## 2026-10-24 - Account notes and returning-login context (demo 0.1.11)
 
 - What we did: added an authenticated home-page Notes section, saved per Northstar account and restored on returning login, including linked Passli login across browsers. Notes are limited to 2,000 characters, escaped as text, isolated between accounts, and bound to the active account/session. Unsaved drafts stay only in page memory.
@@ -228,12 +236,24 @@
 - Results: all25 tests pass locally and in pinned runtime. Coverage includes ordinary and expired cancellation, stale callback against a newer transaction, browser isolation, unchanged binding/account expiry and no code redemption. Live stale callback returns303 to / and settings, preserving the disposable account and expiry. Initial new test used an obsolete action name; corrected to settings-link. Concurrent version-badge changes excluded from frozen deployment and this commit. No Passli API/mobile change.
 - Next steps: retry Unlink then Cancel; the RP returns to settings. If the account itself has reached its30-minute lifetime, return to sign-in rather than restoring an expired session.
 
+
 ## 2026-10-24 - Friendly expired callback (demo0.1.14)
 - What we did: expired/replayed/foreign real callbacks redirect to the site with readable timeout/unavailable messages. No code exchange or newer proof consumption; post-exchange deadline errors also show the exact timeout text. Preserved pending version-badge UI work outside the frozen release.
 - Command / executable: 26 demo flow/provider tests locally and in the pinned runtime; timeout014-release/deploy-demo.py; live HTTPS isolated-visitor callback and state check.
 - Outputs: demo0.1.14 live; ignored timeout014-release/demo014-runtime-test.log, demo014-release.json and live-acceptance.json in the private Passli workspace; public integration/demo docs updated.
 - Results: public callback returns home with Your request timed out. Please try again.; no account authorized. Account/link/expiry and newer request isolation covered by synthetic tests. Original deadlines unchanged.
 - Next steps: start a fresh Passli request. Shared provider popup timeout UX is the separate API590 publication; no mobile build required.
+
+## 2026-10-24 - Disabled devices and demo suspension candidate
+- User confirmed the demo session used Passli. Added visible authenticated-session polling and protected-action provider revalidation, failing closed for missing association; original incident account had already expired at read-only browser inspection.
+- Added explicit enabled-phone Disabled devices list and selective recovery. Existing latched assurance and higher Devices policy remain enforced; exact selection/current disable evidence binds approval. Browser Resume no longer sends a push, and ordinary verification cannot clear a latch. Generic device listings reflect tripwire disablement.
+- Added large red mobile Home button and dedicated selection screen, account/lifecycle response fences and refreshed-list confirmation. Browser notice directs to mobile. Added focused backend/UI regression tests and Markdown deployment acceptance suite.
+- Production mutation hold requested by the concurrently authorized login/logout incident owner. No release versions allocated and no deployment performed; local validation continues. Physical phone acceptance remains pending.
+
+## 2026-10-24 - Disabled-device candidate validation complete; deployment held
+- Frozen API590/web724 plus scoped disabled-device changes: full gate 1186 tests,1184 pass,2 optional skips,0 failures. Final exact-source focused checks82/82 and typecheck passed. Public demo28/28 includes idle-client polling and missing-association failclosed regression.
+- Production mutation hold remains active during a separately coordinated login/logout incident. No versions allocated, release published, customer recovery performed or physical phone acceptance claimed. Candidate source/manifest/receipts: apps/web/.web-deploy/disabled-devices-candidate/frozen-source.
+- An initial staging copy followed a dependency junction; the copy process was stopped and the correct candidate was rebuilt strictly from the verified1092-file manifest. Cleanup of the unused partial source directory was rejected by automatic approval review as blocked by policy, including after explicit user authorization; it remains untouched.
 
 
 ## 2026-10-24 - Disabled-device recovery published (API592 / web726 / Metro726 / demo0.1.15)
@@ -242,3 +262,39 @@
 - Results: API592 all5 source1092/config/image/deps/restarts0/barriers; web726 all5 exact104 artifacts and public bundleSHA944f96d00a47bf93ba2abb4693b468efda66ae537fbd354cf8ca1dafeb84ffad; actual Metro717 baseline preserved through narrow6-file Code726 patch, public iOS launchSHA b5ca7a9bc1d4732fd3e7466177f1a77c7589b2035c9fc1fdc28410b317a28e51. Demo0.1.15 source18/public JS/CSS/image/env/data mounts verified. RP1/RP2 remain584; native binary and extension unchanged. API591 Site permissions changes preserved; next independent593/web727 release is rebased on592.
 - Notes: API/static publication waited for the independently diagnosed Chrome/Cloudflare HTTP3 incident to clear; this release changed no transport config. Metro took about50s to start; initial502 was diagnosed from actual local packager status and read-only verification resumed, without republishing. Whole-directory old native source has unused legacy web/role type errors; the active native import graph and exact iOS export passed, and legacy files were preserved. The initial partial staging copy followed a dependency junction; its process was stopped, correct sources rebuilt by explicit manifest, and cleanup remains blocked by automatic approval review even after user consent. No customer account reset or forced API shutdown occurred.
 - Outputs / next: docs/reports/api592_web726_disabled_devices.md and Markdown acceptance suite; ignored disabled592-app726 immutable sources/manifests/gates/canaries/barriers/publication receipts. Reload phone to Code726 and complete physical Disabled devices/Face ID acceptance; synthetic signatures are not physical acceptance.
+
+## 2026-10-24 - Inline PII registration source0.1.16
+- Removed registration/sharing popup launches; same-tab callback opens the dedicated Passli selector page and the fixed return endpoint restores registration on Cancel or site Home after actual receipt. Requested-fields releases require exact provider-approved outputs; legacy releases remain supported. Updated public spec16 and added inline_pii_deployment_test_suite.md.
+- Validation: npm test,29 passed. Coordinated root API/RP595 and web731 required gate1205 tests/1203 pass/2 optional skips/0 fail; TypeScript and web/iOS JS exports passed.
+- Result: source only; no public Git push or production deployment performed. Preserve existing version-badge/style drafts. Next: coordinated provider/RP/demo/web publication and the deployment acceptance suite.
+
+
+## 2026-10-24 - Remembered PII consent guidance
+Updated integration spec and acceptance suite: first/unset consent uses selectors; usable account/RP consent automatically delivers current allowed values across browsers. Saved Deny stays denied. Companion provider596/web733 local gate:1,205 pass,2 optional skips,0 fail. Not deployed; demo implementation unchanged this turn.
+
+
+## 2026-10-25 - Demo016 deployed with coordinator approval
+Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests passed including release metadata consistency. Public health016 and app/style bytes verified; existing SQLite data/env preserved. Earlier metadata/probe failures rolled back safely to015; corrected Docker-network+public probes accepted final016. API596/web733/RP596 live; Metro/native/extension unchanged. Browser/physical-phone approval acceptance remains unperformed. Full receipt: passli/apps/web/.web-deploy/pii596-web733/deployment-receipt.json.
+
+
+## 2026-10-25 - Demo017 visible version on every page
+- What we did: Published reviewed badge draft on shared real/walkthrough shell and privacy/terms, deriving all HTML version strings from runtime version017. Scoped immutable public-repo commit4a45a21f9f0355a9a3a2e401afa03b401b2d21b6, manifest098e7aea9f264c315932d32d66b576471b68fb433c527cd924f4db5355f319e3. Coordinator separately approved staging and activation.
+- Command / executable: node --test test/*.test.mjs locally/exact production image; protected preflight/stage/activate and final HTTP/source checks under apps/web/.web-deploy/demo017-version.
+- Outputs: deployment-receipt.json; docs/reports/demo017_version_badge.md; public/runtime/rollback evidence.
+- Results:32pass0fail0skip locally and runtime; six public real/walkthrough routes show exactly one v0.1.17, no unresolved placeholder; direct/public health017 and exact CSS/JS. Image/env/SQLite mounts/network/security preserved; runtime restarts0. Generic backup name collision prevented mutation; retained old archive and used commit-specific016 rollback name. API596/web733/RP596 unchanged, Metro/native/extension not published.
+- Next steps: Refresh demo. No screenshots/authenticated browser interactions performed; HTTP rendering/assets/runtime verified. Coordinator completion report/slot release.
+
+### 2026-10-25 - Multiple Passli-linked accounts and demo019
+- What we did: Link Passli remains available when linked; same-pair linking is idempotent; multiple site accounts per verified identity use explicit account choice while one link remains direct. Added composite SQLite migration, bounded browser-bound choice authorization, live provider/membership rechecks and replay/concurrency guards. Updated developer spec/demo plan/README and docs/multiple_accounts_test_suite.md.
+- Command / executable: `node --test demo/test/*.test.mjs`; exact-image staged gate and coordinator-approved demo-only activation through passli/apps/web/.web-deploy/demo019-multi-account/ scripts.
+- Outputs: Local immutable commit79ee316bff92a31f651de6759732919de975f741 on codex/demo019-multiple-accounts; live demo019. Detailed release report in passli/docs/reports/demo019_multiple_accounts.md.
+- Results: All40 local/exact-image tests passed; root-only consistent SQLite backups verified; direct/public health, six badges, exact app.js and fresh synthetic public walkthrough passed, including notes isolation, picker protection and exact unlink. Own fixture accounts deleted. Existing worktree changes preserved; no GitHub push or physical phone acceptance claimed. One early Windows test cleanup hook ran before database closure; corrected cleanup order and reran full gate successfully.
+- Next steps: Real Passli physical-phone acceptance; coordinate public GitHub publication separately. Retained018 cannot safely serve multiple links/pending choices, so preserve current DB and use a compatible forward fix if needed.
+
+
+## 2026-10-25 - Shared source preservation checkpoint
+
+- What we did: Preserved saved integration/demo source, tests and documentation under acknowledged coordinator writer freeze, including local demo020 checkout and earlier account/version work.
+- Command / executable: git status/diff; staged source, artifact and secret-pattern review; normal non-force commit/publication.
+- Results: Source preservation only. No deployment, native build or real account mutation; production demo019 remains unchanged.
+- Next steps: Release writer freeze after commit receipts; finish immutable integration validation and obtain coordinator approval before deployment.

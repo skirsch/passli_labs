@@ -1,7 +1,7 @@
 # Demo site implementation plan
 
-Version: 11
-Updated: 2026-10-24
+Version: 13
+Updated: 2026-10-25
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
 ## Purpose
@@ -19,9 +19,16 @@ the live demo. Preserve the compact sign-in page approved in the button mockup.
    and Create new account. Cancellation returns to signed out; abandoned setup
    appears again on a later Passli login.
 3. Linking: prove control of the existing site account, confirm the named target,
-   obtain fresh Passli proof for that same identity and commit a unique binding.
+   obtain fresh Passli proof for that same identity and commit a unique
+   identity/account pair. Keep Link Passli available when already linked;
+   re-linking the same pair is idempotent and another account adds another link.
 4. Registration: one Create account with Passli button, no local name/phone/email form. Request those fields in the Passli popup, use approved PII supplied by the authorized device, then atomically create the account and binding. Missing, denied, expired or cancelled sharing creates no account.
-5. Returning linked identity: enter the original account directly without chooser.
+5. Returning linked identity: one linked account opens directly. Multiple linked
+   accounts show Choose your account with recognizable names/emails. Only that
+   verified identity's accounts appear; no project/notes access is granted before
+   selection. Recheck the live binding and provider status, consume the original
+   browser-bound login continuation once and rotate the session. Cancellation,
+   expiry, replay, foreign selections and removed bindings grant no access.
 6. Settings: show linked status and Unlink Passli; the click immediately opens Passli unlink approval without another site confirmation. Retain account
    data and alternative login; later unbound login returns to the chooser.
 7. Session lifecycle: local logout, suspension with protected access denied,
@@ -117,3 +124,13 @@ Expired callbacks navigate to the site with a readable message instead of raw
 JSON. Do not redeem a code, mutate a link, restore a session or consume a newer
 request for a stale/foreign callback. Expiry and returning after a timeout are
 not an explicit Cancel. Keep the original request/account deadlines unchanged.
+
+
+## Card checkout extension (local candidate)
+
+Cart navigation, $50 add/remove controls, a large Checkout with Passli button,
+saved card/address consent, an exact authorization cap, and a separate Purchase
+confirmation demonstrate cumulative device spending policy. Real mode uses
+structured signed checkout fields; walkthrough approval remains simulated. No
+processor capture is performed. Checkout is not part of the deployed demo019.
+See [the checkout implementation contract](../demo/README.md#card-checkout-local-candidate).

@@ -91,9 +91,9 @@ test('Passli-session deletion uses restricted confirmation after unlink and dele
  const other=client();await other.init();await other.ok('installation',{installed:true});await complete(other,'passli-start');assert.equal(other.state.screen,'setup');
 });
 
-test('registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed',async t=>{
+for(const inline of [false,true])test((inline?'inline ':'legacy ')+'registration requests Passli PII and creates nothing until authorized device delivery; cancellation and replay fail closed',async t=>{
   const identity='z'.repeat(43),origin='http://127.0.0.1:18766';let authorized=true,releaseNumber=0;
-  const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity,association:{subject:identity},piiRelease:{id:'release-'+(++releaseNumber),challenge:'challenge',deliveryToken:'secret-token',siteOrigin:origin,callback:origin+'/api/pii-release',expires:Date.now()+120000,fields:['name','email','phone'].map(output=>({output,recordId:output,field:output}))}};},async authorizeDisclosure(){return authorized;},async status(){return 'active';}};
+  const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity,association:{subject:identity},piiRelease:{id:'release-'+(++releaseNumber),challenge:'challenge',deliveryToken:'secret-token',siteOrigin:origin,callback:origin+'/api/pii-release',expires:Date.now()+120000,fields:inline?[]:['name','email','phone'].map(output=>({output,recordId:output,field:output})),...(inline?{requestedFields:['name','email','phone']}: {})}};},async authorizeDisclosure(){return inline?{active:authorized,outputs:['name','email','phone']}:authorized;},async status(){return 'active';}};
   const {c}=await fixture(t,{mode:'real',provider});
   const start=async()=>{await c.ok('register-local');const response=await c.ok('register');await c.callback(new URL(response.redirect).searchParams.get('state'));await c.init();assert.equal(c.state.screen,'profile-sharing');assert.equal(c.state.account,null);return c.state.piiRequest.id;};
   const deliver=(id,extra={})=>c.request('/api/pii-release',{method:'POST',headers:{Origin:'https://passli.app','Content-Type':'application/json'},body:JSON.stringify({id,deliveryToken:'secret-token',values:{name:'Provided name',email:'provided@example.test',phone:'+15555550123'},...extra})});
@@ -102,7 +102,7 @@ test('registration requests Passli PII and creates nothing until authorized devi
   assert.equal((await deliver(first,{deliveryToken:'wrong'})).response.status,409);
   assert.equal((await deliver(first,{values:{name:'Missing phone'}})).response.status,409);
   authorized=false;assert.equal((await deliver(first)).response.status,409);authorized=true;
-  await c.ok('cancel');assert.equal((await deliver(first)).response.status,409);
+  const cancelled=await c.request('/auth/passli/pii-return?'+new URLSearchParams({id:first,outcome:'cancelled'}),{redirect:'manual'});assert.equal(cancelled.response.status,303);await c.init();assert.equal((await deliver(first)).response.status,409);
   const second=await start();assert.equal((await deliver(second)).response.status,200);await c.init();
   assert.equal(c.state.account.name,'Provided name');assert.equal(c.state.account.email,'provided@example.test');assert.equal(c.state.account.phone,'+15555550123');assert.equal(c.state.account.linked,true);
   assert.equal((await deliver(second)).response.status,409);
@@ -147,13 +147,88 @@ test('cancelled setup reappears; registration binds a separate account atomicall
   assert.equal((await c.action('approve',{identity:'demo-alice',transaction})).response.status,409);
   assert.equal(c.state.demoAccounts.length,2);
 });
-test('settings linking rejects an identity already bound elsewhere',async t=>{
+test('settings linking adds the same identity to multiple accounts and returning login requires an explicit account choice',async t=>{
   const {c}=await fixture(t);await c.ok('passli-start');await c.approve();await c.ok('choose-create');await c.ok('register');await c.approve();
+  const first=c.state.account.id;
   await c.ok('logout');await c.login();await c.ok('settings');await c.ok('settings-link');
   assert.equal(c.state.screen,'approval');assert.equal(c.state.pendingAction,'link');assert.equal(c.state.account.linked,false);
-  assert.equal((await c.action('approve',{identity:'demo-alice'})).response.status,409);assert.equal(c.state.account.linked,false);
-  await c.ok('settings-link');await c.approve('demo-bob');assert.equal(c.state.account.linked,true);
+  await c.approve();assert.equal(c.state.account.linked,true);const second=c.state.account.id;
+  await c.ok('settings-link');await c.approve();assert.equal(c.state.account.id,second);
+  await c.ok('logout');await c.ok('passli-start');await c.approve();assert.equal(c.state.screen,'account-choice');assert.equal(c.state.account,null);assert.deepEqual(new Set(c.state.accountChoices.map(account=>account.id)),new Set([first,second]));
+  assert.equal((await c.request('/api/private')).response.status,401);assert.equal((await c.action('select-account',{accountId:'forged'})).response.status,409);
+  await c.ok('select-account',{accountId:second});assert.equal(c.state.account.id,second);
+  await c.ok('logout');await c.ok('passli-start');await c.approve();await c.ok('select-account',{accountId:first});assert.equal(c.state.account.id,first);
 });
+const multiProvider=()=>({begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.state;},async complete(){return {identity:'m'.repeat(43),unlinkVerified:true,association:{subject:'m'.repeat(43)}};},async status(){return 'active';}});
+async function realComplete(client,action){const result=await client.ok(action);assert.equal((await client.callback(new URL(result.redirect).searchParams.get('state'))).response.status,303);await client.init();}
+async function linkedClient(f,email,notes=''){
+ const client=f.client();await client.init();await client.ok('login',{username:email,password:'demo'});
+ if(notes)await client.ok('notes-save',{accountId:client.state.account.id,notes});
+ await client.ok('settings');await realComplete(client,'settings-link');return client;
+}
+async function realChooser(f){const client=f.client();await client.init();await client.ok('installation',{installed:true});await realComplete(client,'passli-start');assert.equal(client.state.screen,'account-choice');return client;}
+
+test('real multi-account login lists only current linked accounts across browsers, checks membership and preserves each account context',async t=>{
+ const f=await fixture(t,{mode:'real',provider:multiProvider()});
+ const first=await linkedClient(f,'first@example.test','Private first account note'),firstId=first.state.account.id;
+ const second=await linkedClient(f,'second@example.test','Private second account note'),secondId=second.state.account.id;
+ await realComplete(second,'settings-link');assert.equal(second.state.account.id,secondId,'same-pair linking is idempotent');
+ const foreign=f.client();await foreign.init();await foreign.ok('login',{username:'unlinked@example.test',password:'demo'});const foreignId=foreign.state.account.id;await foreign.ok('logout');
+ const picker=await realChooser(f),transaction=picker.state.transaction,choices=picker.state.accountChoices;
+ assert.deepEqual(new Set(choices.map(account=>account.id)),new Set([firstId,secondId]));assert.ok(choices.every(account=>Object.keys(account).sort().join(',')==='email,id,name'));
+ assert.ok(!JSON.stringify(picker.state).includes('Private'));assert.equal(picker.state.account,null);assert.equal((await picker.request('/api/private')).response.status,401);
+ assert.equal((await picker.action('select-account',{accountId:foreignId})).response.status,409);
+ assert.equal((await foreign.action('select-account',{accountId:firstId,transaction})).response.status,409);
+ const before=picker.cookie;await picker.ok('select-account',{accountId:secondId});assert.notEqual(picker.cookie,before);assert.equal(picker.state.account.notes,'Private second account note');
+ await picker.ok('logout');assert.equal((await picker.action('select-account',{accountId:firstId,transaction})).response.status,409);
+ await realComplete(picker,'passli-start');await picker.ok('select-account',{accountId:firstId});assert.equal(picker.state.account.notes,'Private first account note');
+ await picker.ok('settings');await realComplete(picker,'unlink');assert.equal(picker.state.account,null);
+ await realComplete(picker,'passli-start');assert.equal(picker.state.screen,'home');assert.equal(picker.state.account.id,secondId,'unlink removes only the selected account link');
+});
+
+test('account picker cancellation, original deadline and provider suspension grant no session',async t=>{
+ let providerStatus='active';const provider=multiProvider();provider.status=async()=>providerStatus;
+ const f=await fixture(t,{mode:'real',provider});await linkedClient(f,'one@example.test');await linkedClient(f,'two@example.test');
+ const c=await realChooser(f),accountId=c.state.accountChoices[0].id,transaction=c.state.transaction;
+ await c.ok('cancel');assert.equal(c.state.screen,'login');assert.equal(c.state.accountChoices.length,0);assert.equal((await c.action('select-account',{accountId,transaction})).response.status,409);
+ await realComplete(c,'passli-start');providerStatus='suspended';assert.equal((await c.action('select-account',{accountId})).response.status,409);assert.equal((await c.request('/api/private')).response.status,401);
+ providerStatus='active';await c.ok('cancel');await realComplete(c,'passli-start');f.advance(61000);assert.equal((await c.action('select-account',{accountId})).response.status,409);assert.equal(c.state.account,null);
+});
+
+test('selection rechecks unlink/deletion and concurrent cancellation after provider authorization begins',async t=>{
+ let pause=false,release,started;const provider=multiProvider();provider.status=async()=>{if(pause){pause=false;started?.();await new Promise(resolve=>release=resolve);}return 'active';};
+ const f=await fixture(t,{mode:'real',provider}),first=await linkedClient(f,'one@example.test'),second=await linkedClient(f,'two@example.test');
+ const picker=await realChooser(f),firstId=first.state.account.id;
+ await realComplete(first,'unlink');assert.equal((await picker.action('select-account',{accountId:firstId})).response.status,409);assert.equal((await picker.request('/api/private')).response.status,401);
+ const secondId=second.state.account.id;await realComplete(second,'delete-account-start');await second.ok('delete-account-confirm');assert.equal((await picker.action('select-account',{accountId:secondId})).response.status,409);
+ await linkedClient(f,'third@example.test');await linkedClient(f,'fourth@example.test');await picker.ok('cancel');await realComplete(picker,'passli-start');
+ const target=picker.state.accountChoices[0].id,transaction=picker.state.transaction,entered=new Promise(resolve=>started=resolve);pause=true;
+ const selecting=picker.action('select-account',{accountId:target});await entered;await picker.ok('cancel');release();assert.equal((await selecting).response.status,409);
+ assert.equal((await picker.request('/api/private')).response.status,401);assert.equal((await picker.action('select-account',{accountId:target,transaction})).response.status,409);
+});
+
+test('legacy single-account SQLite bindings migrate without losing notes; multi-account choice survives restart and expires accounts independently',async t=>{
+ const directory=mkdtempSync(join(tmpdir(),'passli-multiple-')),database=join(directory,'demo.sqlite');
+ const provider=multiProvider(),old=await fixture(t,{mode:'real',provider,database}),first=await linkedClient(old,'legacy@example.test','Retained through migration'),firstId=first.state.account.id;
+ await new Promise(resolve=>old.server.close(resolve));
+ const db=new DatabaseSync(database);try{db.exec('ALTER TABLE bindings RENAME TO modern_bindings; CREATE TABLE bindings (subject TEXT PRIMARY KEY,visitor TEXT NOT NULL,account TEXT NOT NULL); INSERT INTO bindings SELECT subject,visitor,account FROM modern_bindings; DROP TABLE modern_bindings;');}finally{db.close();}
+ const migrated=await fixture(t,{mode:'real',provider,database});migrated.advance(10000);const second=await linkedClient(migrated,'second@example.test'),secondId=second.state.account.id,picker=await realChooser(migrated),cookie=picker.cookie;
+ assert.equal(picker.state.accountChoices.length,2);await new Promise(resolve=>migrated.server.close(resolve));
+ const restored=await fixture(t,{mode:'real',provider,database}),browser=restored.client(cookie);t.after(()=>rmSync(directory,{recursive:true,force:true}));await browser.init();assert.equal(browser.state.screen,'account-choice');
+ await browser.ok('select-account',{accountId:firstId});assert.equal(browser.state.account.notes,'Retained through migration');
+ await browser.ok('logout');await realComplete(browser,'passli-start');restored.advance(30*60000);assert.equal((await browser.action('select-account',{accountId:firstId})).response.status,409);
+ await browser.ok('installation',{installed:true});await realComplete(browser,'passli-start');assert.equal(browser.state.screen,'home');assert.equal(browser.state.account.id,secondId);
+});
+
+test('simultaneous account selections consume the login once without resurrecting a stale browser continuation',async t=>{
+ let hold=false,releases=[],entered;const provider=multiProvider();provider.status=async()=>{if(hold){await new Promise(resolve=>{releases.push(resolve);if(releases.length===2)entered();});}return 'active';};
+ const f=await fixture(t,{mode:'real',provider});await linkedClient(f,'one@example.test');await linkedClient(f,'two@example.test');
+ const first=await realChooser(f),second=f.client(first.cookie);await second.init();const [one,two]=first.state.accountChoices,transaction=first.state.transaction;
+ const both=new Promise(resolve=>entered=resolve);hold=true;const a=first.action('select-account',{accountId:one.id}),b=second.action('select-account',{accountId:two.id});await both;hold=false;releases.forEach(resolve=>resolve());
+ const results=await Promise.all([a,b]);assert.deepEqual(results.map(result=>result.response.status).sort(),[200,409]);
+ const loser=results[0].response.status===409?first:second;await loser.init();assert.equal(loser.state.account,null);assert.equal(loser.state.accountChoices.length,0);assert.equal((await loser.action('select-account',{accountId:one.id,transaction})).response.status,409);
+});
+
 test('unlink preserves account, invalidates Passli session and never restores binding automatically',async t=>{
   const {c}=await fixture(t);await c.login();const before=(await c.request('/api/private')).body;
   await c.ok('settings-link');await c.approve();await c.ok('logout');await c.ok('passli-start');await c.approve();
@@ -296,3 +371,16 @@ test('late callback returns a timeout on the site without redeeming or consuming
  await complete('passli-start');await c.ok('choose-link');await c.ok('link-login',{username:'missing@example.test',password:'demo'});await complete('confirm-link');await c.ok('logout');await complete('passli-start');
  assert.equal(c.state.screen,'login');assert.equal((await c.request('/api/private')).response.status,401);assert.ok((await c.action('notes-save',{notes:'must not write'})).response.status>=400);
  });
+
+
+test('real checkout checks current provider session and cart after asynchronous approval; cancellation wins',async t=>{
+ let complete=false,waiting,release;
+ const selection={card:{recordId:'c',label:'My AMEX',last4:'1009'},address:{recordId:'a',label:'My home',street:'50 Example Street',city:'Example City',region:'CA',postalCode:'94000',country:'US'}};
+ const provider={begin(proof){proof.state=proof.id;return 'https://provider.example/?state='+proof.id;},async complete(){return {identity:'q'.repeat(43),association:{subject:'q'.repeat(43)}};},async status(){return 'active';},async createCheckout(_,order){return {order,requestId:'r'.repeat(43),approvalUrl:'https://passli.app/?signatureRequest='+'r'.repeat(43),resultSecret:'private-result-secret',expiresAt:Math.floor(Date.now()/1000)+600};},async checkoutResult(){if(waiting){waiting();await new Promise(resolve=>release=resolve);}return complete?{fields:{selection,requiredLoA:4,achievedLoA:4}}:{pending:true};}};
+ const {c}=await fixture(t,{mode:'real',provider});await c.ok('installation',{installed:true});await c.ok('passli-start');await c.callback(c.state.transaction);await c.init();await c.ok('choose-link');await c.ok('link-login',{username:'qa@example.test',password:'demo'});await c.ok('confirm-link');await c.callback(c.state.transaction);await c.init();await c.ok('logout');await c.ok('passli-start');await c.callback(c.state.transaction);await c.init();
+ await c.ok('cart');await c.ok('cart-add');const started=await c.ok('checkout-start');assert.match(started.popupUrl,/signatureRequest/);assert.ok(!JSON.stringify(started.state).includes('private-result-secret'));
+ let id=c.state.cart.approval.id;await c.ok('checkout-status',{checkoutId:id});assert.equal(c.state.screen,'checkout-wait');assert.equal((await c.action('checkout-demo-approve',{checkoutId:id})).response.status,409);
+ complete=true;await c.ok('checkout-status',{checkoutId:id});assert.equal(c.state.screen,'checkout-confirm');assert.equal(c.state.cart.approval.achievedLoA,4);await c.ok('purchase',{checkoutId:id});assert.equal(c.state.cart.purchasedCents,5000);assert.equal((await c.action('purchase',{checkoutId:id})).response.status,409);
+ await c.ok('cart-add');await c.ok('checkout-start');id=c.state.cart.approval.id;
+ const startedWaiting=new Promise(resolve=>waiting=resolve),poll=c.action('checkout-status',{checkoutId:id});await startedWaiting;await c.ok('checkout-cancel');release();assert.equal((await poll).response.status,400);await c.init();assert.equal(c.state.cart.approval,null);assert.equal(c.state.screen,'cart');assert.equal(c.state.cart.purchasedCents,5000);
+});
