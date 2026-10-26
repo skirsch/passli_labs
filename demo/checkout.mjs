@@ -20,6 +20,7 @@ export function checkoutAction(world,body,now,{real=false}={}){
  }
  if(body.action==='checkout-start'){
   if(!cart.quantity)fail('Add an item to your cart first.');
+  if(!account.identities.length)fail('Link your Passli account for faster checkout.');
   if(world.checkout?.status==='pending'&&world.checkout.expires>now)fail('Finish or cancel your current checkout first.');
   const id=random(),order={version:2,orderId:id,quantity:cart.quantity,unitAmount:'50.00',maximumAmount:(cart.quantity*50).toFixed(2),currency:'USD'};
   world.checkout={id,order,accountId:account.id,sessionId:world.session.id,revision:cart.revision,expires:Math.min(now+600000,account.expiresAt,world.session.expires),status:'pending'};
@@ -27,7 +28,7 @@ export function checkoutAction(world,body,now,{real=false}={}){
  }
  const approval=world.checkout;
  if(body.action==='checkout-cancel'){if(world.pending?.action==='checkout')world.pending=null;world.inflight=null;world.checkout=null;world.screen='cart';return;}
- if(!approval||approval.id!==body.checkoutId||approval.accountId!==account.id||approval.sessionId!==world.session.id||approval.revision!==cart.revision||approval.expires<=now)fail('Checkout changed or expired. Start again from your cart.');
+ if(!approval||approval.id!==body.checkoutId||approval.accountId!==account.id||approval.sessionId!==world.session.id||approval.revision!==cart.revision||approval.expires<=now||approval.association&&!account.identities.includes(approval.association.subject))fail('Checkout changed or expired. Start again from your cart.');
  if(body.action==='checkout-resume'){world.screen=approval.status==='approved'?'checkout-confirm':'checkout-wait';return;}
  if(body.action==='checkout-demo-approve'){
   if(real)fail('Simulated checkout approval is unavailable in real mode.');

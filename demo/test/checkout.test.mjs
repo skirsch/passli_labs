@@ -10,7 +10,7 @@ import {canonical} from '../unlink.mjs';
 test('server-owned $50 cart, cumulative purchases, one-use confirmation, cancellation, edit, account switch and expiry',()=>{
  const now=Date.now(),w=freshWorld(now);act(w,{action:'login',username:'qa@example.test',password:'demo'},now);
  const run=(action,extra={})=>checkoutAction(w,{action,checkoutId:w.checkout?.id,...extra},now);
- run('cart');assert.throws(()=>run('checkout-start'));
+ run('cart');assert.throws(()=>run('checkout-start'));act(w,{action:'cart-link'},now);act(w,{action:'approve',transaction:w.pending.id,identity:'demo-alice'},now);
  for(let index=0;index<3;index++){
   run('cart-add');assert.equal(cartView(w).totalCents,5000);run('checkout-start');
   assert.throws(()=>run('purchase'));run('checkout-demo-approve');act(w,{action:'home'},now);run('cart');run('checkout-resume');assert.equal(w.screen,'checkout-confirm');
@@ -24,7 +24,7 @@ test('server-owned $50 cart, cumulative purchases, one-use confirmation, cancell
  const previous=w.checkout.id;act(w,{action:'logout'},now);assert.equal(cartView(w),null);act(w,{action:'login',username:'other@example.test',password:'demo'},now);assert.throws(()=>run('purchase',{checkoutId:previous}));
 });
 
-test('HTTP cart uses CSRF and session; real mode authorizes a password customer through Passli without simulation',async t=>{
+test('HTTP cart uses CSRF and session; real mode requires a link and cannot simulate checkout',async t=>{
  for(const mode of ['walkthrough','real']){
   const origin='http://127.0.0.1:18766',server=createDemo({origin,mode,provider:{status:async()=> 'active',begin:proof=>{proof.state=proof.id;return 'https://api.passli.app/direct/login?state='+proof.id}}});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
   const base='http://127.0.0.1:'+server.address().port;let cookie='',state;
@@ -34,8 +34,9 @@ test('HTTP cart uses CSRF and session; real mode authorizes a password customer 
   assert.equal((await action('cart-add',{}, {'X-Demo-CSRF':'wrong'})).r.status,403);
   await action('cart');await action('cart-add');assert.equal(state.cart.totalCents,5000);
   const started=await action('checkout-start',{amount:'0.01',quantity:100});
-  if(mode==='real'){assert.equal(started.r.status,200);assert.equal(new URL(started.body.redirect).origin,'https://api.passli.app');assert.equal(state.sessionMethod,'password');assert.equal(state.account.linked,false);assert.equal((await action('checkout-demo-approve')).r.status,409);continue;}
-  assert.equal(started.r.status,200);await action('checkout-demo-approve');assert.equal(state.screen,'checkout-confirm');
+  assert.equal(started.r.status,409);if(mode==='real'){const link=await action('cart-link');assert.equal(link.r.status,200);assert.equal(new URL(link.body.redirect).origin,'https://api.passli.app');assert.equal(state.account.linked,false);assert.equal((await action('checkout-demo-approve')).r.status,409);continue;}
+  await action('cart-link');await action('approve',{transaction:state.transaction,identity:'demo-alice'});const linkedStart=await action('checkout-start');
+  assert.equal(linkedStart.r.status,200);await action('checkout-demo-approve');assert.equal(state.screen,'checkout-confirm');
   assert.equal((await action('purchase',{amount:'0.01'})).r.status,200);assert.equal(state.cart.receipt.totalCents,5000);assert.equal((await action('purchase')).r.status,409);
  }
 });

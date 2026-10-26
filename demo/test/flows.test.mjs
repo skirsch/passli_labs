@@ -386,14 +386,14 @@ test('real checkout checks current provider session and cart after asynchronous 
  const startedWaiting=new Promise(resolve=>waiting=resolve),poll=c.action('checkout-status',{checkoutId:id});await startedWaiting;await c.ok('checkout-cancel');release();assert.equal((await poll).response.status,400);await c.init();assert.equal(c.state.cart.approval,null);assert.equal(c.state.screen,'cart');assert.equal(c.state.cart.purchasedCents,5000);
 });
 
-test('password customer goes through Passli to its checkout page without linking or changing merchant accounts; revoked checkout cannot purchase',async t=>{
+test('linked password customer goes through Passli to its checkout page without changing merchant accounts; revoked checkout cannot purchase',async t=>{
  let active=true;
  const selection={card:{recordId:'card',label:'My AMEX',last4:'0005'},address:{recordId:'home',label:'My home',street:'50 Example Street',city:'Example City',region:'CA',postalCode:'94000',country:'US',personRecordId:'person',recipientName:'Synthetic Recipient'}};
  const provider={begin(proof){proof.state=proof.id;return 'https://api.passli.app/direct/login?state='+proof.id;},async complete(){return {identity:'p'.repeat(43),association:{subject:'p'.repeat(43)}}},async status(){return active?'active':'terminated'},async createCheckout(_,order){assert.equal(order.version,2);return {order,requestId:'request',approvalUrl:'https://passli.app/?signatureRequest=request',expiresAt:Math.floor(Date.now()/1000)+600}},async checkoutResult(){return {fields:{selection:disclosureCommitment(selection),requiredLoA:1,achievedLoA:1}}}};
- const {c}=await fixture(t,{mode:'real',provider});await c.login();const original=c.state.account.id;await c.ok('cart-add');
+ const {c}=await fixture(t,{mode:'real',provider});await c.login();const original=c.state.account.id;await c.ok('cart-add');await linkCart(c);
  const started=await c.ok('checkout-start'),callback=await c.callback(new URL(started.redirect).searchParams.get('state'));
  assert.equal(callback.response.status,303);assert.equal(callback.response.headers.get('location'),'https://passli.app/?signatureRequest=request&signatureReturn=demo');
- await c.init();assert.equal(c.state.account.id,original);assert.equal(c.state.account.linked,false);assert.equal(c.state.sessionMethod,'password');assert.equal(c.state.cart.quantity,1);
+ await c.init();assert.equal(c.state.account.id,original);assert.equal(c.state.account.linked,true);assert.equal(c.state.sessionMethod,'password');assert.equal(c.state.cart.quantity,1);
  const id=c.state.cart.approval.id;await c.ok('checkout-status',{checkoutId:id});
  const delivery=await c.request('/api/checkout-release',{method:'POST',headers:{Origin:'https://passli.app','Content-Type':'application/json'},body:JSON.stringify({id:'request',selection})});assert.equal(delivery.response.status,200);
  active=false;assert.equal((await c.action('purchase',{checkoutId:id})).response.status,409);await c.init();assert.equal(c.state.account.id,original);assert.equal(c.state.sessionMethod,'password');assert.equal(c.state.cart.purchasedCents,0);assert.equal(c.state.cart.approval,null);
@@ -401,8 +401,24 @@ test('password customer goes through Passli to its checkout page without linking
 
 for(const change of ['cancel','cart-change','account-switch','logout','expiry'])test('late checkout authorization cannot survive '+change,async t=>{
  let release,entered,created=0;const waiting=new Promise(resolve=>entered=resolve),complete=new Promise(resolve=>release=resolve);
- const provider={begin(proof){proof.state=proof.id;return 'https://api.passli.app/direct/login?state='+proof.id},async complete(){entered();await complete;return {identity:'p'.repeat(43),association:{subject:'p'.repeat(43)}}},async status(){return 'active'},async createCheckout(){created++;throw Error('Must not create a stale order')}};
- const f=await fixture(t,{mode:'real',provider}),{c}=f;await c.login();await c.ok('cart-add');const started=await c.ok('checkout-start');const callback=c.callback(new URL(started.redirect).searchParams.get('state'));await waiting;
+ const provider={begin(proof){proof.state=proof.id;return 'https://api.passli.app/direct/login?state='+proof.id},async complete(proof){if(proof.action==='checkout'){entered();await complete;}return {identity:'p'.repeat(43),association:{subject:'p'.repeat(43)}}},async status(){return 'active'},async createCheckout(){created++;throw Error('Must not create a stale order')}};
+ const f=await fixture(t,{mode:'real',provider}),{c}=f;await c.login();await c.ok('cart-add');await linkCart(c);const started=await c.ok('checkout-start');const callback=c.callback(new URL(started.redirect).searchParams.get('state'));await waiting;
  if(change==='cancel')await c.ok('checkout-cancel');if(change==='cart-change')await c.ok('cart-add');if(change==='account-switch')await c.ok('login',{username:'other@example.test',password:'demo'});if(change==='logout')await c.ok('logout');if(change==='expiry')f.advance(61000);
  release();assert.equal((await callback).response.status,303);await c.init();assert.equal(created,0);assert.equal(c.state.cart?.approval??null,null);if(change==='account-switch')assert.equal(c.state.account.email,'other@example.test');if(change==='logout')assert.equal(c.state.account,null);
+});
+
+async function linkCart(c){
+ await c.ok('cart');const link=await c.ok('cart-link');await c.callback(new URL(link.redirect).searchParams.get('state'));await c.init();assert.equal(c.state.screen,'cart');assert.equal(c.state.account.linked,true);
+}
+
+for(const outcome of ['approve','cancel','expire'])test('cart linking '+outcome+' returns to the same cart without losing items',async t=>{
+ const f=await fixture(t),{c}=f;await c.login();const original=c.state.account.id;await c.ok('cart-add');await c.ok('cart-add');await c.ok('cart');await c.ok('cart-link');
+ if(outcome==='approve')await c.approve();if(outcome==='cancel')await c.ok('cancel');if(outcome==='expire'){f.advance(61000);await c.init()}
+ assert.equal(c.state.screen,'cart');assert.equal(c.state.account.id,original);assert.equal(c.state.cart.quantity,2);assert.equal(c.state.account.linked,outcome==='approve');assert.equal(c.state.sessionMethod,'password');
+});
+
+test('checkout must be approved by an identity linked to this merchant account',async t=>{
+ let created=0;
+ const provider={begin(proof){proof.state=proof.id;return 'https://api.passli.app/direct/login?state='+proof.id},async complete(proof){const identity=(proof.action==='link'?'p':'q').repeat(43);return {identity,association:{subject:identity}}},async status(){return 'active'},async createCheckout(){created++;throw Error('Wrong identity must not create checkout')}};
+ const {c}=await fixture(t,{mode:'real',provider});await c.login();await c.ok('cart-add');await linkCart(c);const original=c.state.account.id,started=await c.ok('checkout-start');await c.callback(new URL(started.redirect).searchParams.get('state'));await c.init();assert.equal(created,0);assert.equal(c.state.account.id,original);assert.equal(c.state.account.linked,true);assert.equal(c.state.cart.approval,null);assert.equal(c.state.screen,'cart');
 });

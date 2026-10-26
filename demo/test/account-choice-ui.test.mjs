@@ -22,6 +22,12 @@ test('Link Passli stays available in both linked and unlinked settings',()=>{
  }
 });
 
+for(const linked of [false,true])test('cart shows the correct Passli action for linked='+linked,async()=>{
+ const state={mode:'real',screen:'cart',csrf:'csrf',account:{id:'account',linked},cart:{quantity:1,totalCents:5000,purchasedCents:0}},ui=page(state);
+ assert.equal(ui.html.includes('Link your Passli account for faster checkout'),!linked);assert.equal(ui.html.includes('data-action="checkout-start"'),linked);
+ const name=linked?'checkout-start':'cart-link';ui.listeners.get('click')({target:{closest:selector=>selector==='button[data-action]'?{type:'button',dataset:{action:name}}:null}});await new Promise(setImmediate);assert.equal(ui.sent[0].body.action,name);
+});
+
 for(const redirect of ['https://api.passli.app/direct/login?state=checkout','https://passli.app/?signatureRequest=checkout&signatureReturn=demo'])test('checkout navigates the current page to '+new URL(redirect).hostname+' without a transient popup',async()=>{
  const state={mode:'real',screen:'cart',csrf:'csrf',account:{id:'account'},cart:{quantity:4,totalCents:20000,purchasedCents:0}},ui=page(state,{reply:{body:{state,redirect}}});
  ui.listeners.get('click')({target:{closest:selector=>selector==='button[data-action]'?{type:'button',dataset:{action:'checkout-start'}}:null}});await new Promise(setImmediate);

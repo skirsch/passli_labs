@@ -66,7 +66,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         const row=db.prepare('SELECT id,state FROM visitors').all().find(row=>JSON.parse(row.state).checkout?.proof?.requestId===body.id);if(!row)throw Error('Checkout expired or was cancelled.');visitorId=row.id;
         if(checkoutJobs.has(visitorId))return json(409,{error:'Checkout is being checked. Please try again.'});checkoutJobs.add(visitorId);ownsCheckoutJob=true;
         const original=JSON.parse(row.state),checkoutId=original.checkout.id,sessionId=original.session?.id;
-        const current=()=>{const row=load.get(visitorId);if(!row)throw Error('Checkout session ended.');const world=JSON.parse(row.state);expire(world,now());if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkoutId||world.checkout.expires<=now()||world.accounts.find(a=>a.id===world.session.accountId)?.cart?.revision!==world.checkout.revision)throw Error('Checkout changed or expired.');return world;};
+        const current=()=>{const row=load.get(visitorId);if(!row)throw Error('Checkout session ended.');const world=JSON.parse(row.state);expire(world,now());if(!authorizedAccount(world)||!authorizedAccount(world).identities.includes((world.checkout?.association||world.providerAssociation)?.subject)||world.session.id!==sessionId||world.checkout?.id!==checkoutId||world.checkout.expires<=now()||world.accounts.find(a=>a.id===world.session.accountId)?.cart?.revision!==world.checkout.revision)throw Error('Checkout changed or expired.');return world;};
         let world=current();
         if(!world.checkout.commitment){
           const result=await passli.checkoutResult(world.checkout.proof);world=current();
@@ -127,7 +127,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       const current=()=>{
         const row=load.get(visitor);if(!row)throw Error('Checkout session ended.');
         world=JSON.parse(row.state);expire(world,now());
-        if(!authorizedAccount(world)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now()||world.accounts.find(a=>a.id===checkout.accountId)?.cart?.revision!==checkout.revision)throw Error('Checkout changed while awaiting Passli.');
+        if(!authorizedAccount(world)||!authorizedAccount(world).identities.includes(association.subject)||world.session.id!==sessionId||world.checkout?.id!==checkout.id||world.checkout.expires<=now()||world.accounts.find(a=>a.id===checkout.accountId)?.cart?.revision!==checkout.revision)throw Error('Checkout changed while awaiting Passli.');
       };
       try{
         const proof=await passli.createCheckout(association,checkout.order);current();
@@ -181,7 +181,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         world.inflight=null;
         if(proof.action==='checkout'){
           const account=authorizedAccount(world);
-          if(!account||account.id!==proof.accountId||world.session.id!==proof.sessionId||world.screen!=='approval'||account.cart?.revision!==proof.revision)throw Error('Checkout account or cart changed.');
+          if(!account||!account.identities.includes(result.identity)||account.id!==proof.accountId||world.session.id!==proof.sessionId||world.screen!=='approval'||account.cart?.revision!==proof.revision)throw Error('Checkout account or cart changed.');
           checkoutAction(world,{action:'checkout-start'},now(),{real:true});
           await createCheckoutProof(result.association);
           res.writeHead(303,{Location:checkoutUrl()});res.end();return;
@@ -206,7 +206,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         if(world.session?.method==='passli')world.providerAssociation=result.association;
         db.exec('BEGIN IMMEDIATE');try{rotate();syncBindings();persist();db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
         return redirect();
-      } catch {const current=load.get(id);if(proof.action==='checkout'&&!current)return redirect();if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?proof.action==='checkout'?'cart':'settings':world.setup?'setup':'login';}if(proof.action==='checkout'&&world.checkout&&!world.checkout.proof){world.checkout=null;world.screen=world.session?'cart':'login';}world.message=proof.expires<=now()?'Your request timed out. Please try again.':'Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
+      } catch {const current=load.get(id);if(proof.action==='checkout'&&!current)return redirect();if(current)world=JSON.parse(current.state);if(world.inflight===proof.id){world.inflight=null;world.pending=null;world.screen=world.session?proof.action==='checkout'||proof.returnScreen==='cart'?'cart':'settings':world.setup?'setup':'login';}if(proof.action==='checkout'&&world.checkout&&!world.checkout.proof){world.checkout=null;world.screen=world.session?'cart':'login';}world.message=proof.expires<=now()?'Your request timed out. Please try again.':'Passli verification failed or the transaction changed. Start again.';persist();return redirect();}
     }
     async function checkProvider(){
       if(mode!=='real'||world.session?.method!=='passli')return;
@@ -262,6 +262,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         if(checkoutJobs.has(id)&&['checkout-start','checkout-status'].includes(body.action))throw Object.assign(Error('Checkout is being checked. Please wait.'),{status:409});
         if(mode==='real'&&body.action==='checkout-start'&&world.session?.method==='password'){
           const account=authorizedAccount(world);
+          if(!account?.identities.length)throw Object.assign(Error('Link your Passli account for faster checkout.'),{status:409});
           if(!account?.cart?.quantity)throw Object.assign(Error('Add an item to your cart first.'),{status:409});
           if(world.pending||world.checkout)throw Object.assign(Error('Finish or cancel your current checkout first.'),{status:409});
           world.pending={id:random(),action:'checkout',accountId:account.id,sessionId:world.session.id,revision:account.cart.revision,expires:Math.min(now()+60000,world.session.expires,account.expiresAt)};
