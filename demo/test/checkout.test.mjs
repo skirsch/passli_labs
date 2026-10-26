@@ -7,6 +7,15 @@ import {checkoutAction,cartView,verifyCheckout,disclosureCommitment,acceptChecko
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {canonical} from '../unlink.mjs';
 
+test('v3 checkout requires email and phone and verifies the exact browser contact commitment',()=>{
+ const f=signedFixture(),a={...f.selection.address,personRecordId:'person',recipientName:'Synthetic Recipient',emailRecordId:'email',email:'qa@example.test',phoneRecordId:'phone',phoneNumber:'+1 202 555 0123'},selection={...f.selection,address:a};
+ const commitment=disclosureCommitment(selection,{requireName:true,requireContact:true}),world={checkout:{order:{...f.expected.order,version:3},commitment}};
+ assert.equal(commitment.address.hash,createHash('sha256').update(JSON.stringify(['passli:checkout-address:v3',a.recordId,a.label,a.street,a.city,a.region,a.postalCode,a.country,a.personRecordId,a.recipientName,a.emailRecordId,a.email,a.phoneRecordId,a.phoneNumber])).digest('hex'));
+ assert.ok(!JSON.stringify(commitment).includes(a.email));assert.ok(!JSON.stringify(commitment).includes(a.phoneNumber));
+ for(const key of ['emailRecordId','email','phoneRecordId','phoneNumber'])for(const value of [undefined,'Changed'])assert.throws(()=>acceptCheckoutDisclosure(world,{...selection,address:{...a,[key]:value}}));
+ assert.throws(()=>acceptCheckoutDisclosure(world,f.selection));acceptCheckoutDisclosure(world,selection);assert.equal(world.checkout.status,'approved');
+});
+
 test('server-owned $50 cart, cumulative purchases, one-use confirmation, cancellation, edit, account switch and expiry',()=>{
  const now=Date.now(),w=freshWorld(now);act(w,{action:'login',username:'qa@example.test',password:'demo'},now);
  const run=(action,extra={})=>checkoutAction(w,{action,checkoutId:w.checkout?.id,...extra},now);

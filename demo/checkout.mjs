@@ -22,7 +22,7 @@ export function checkoutAction(world,body,now,{real=false}={}){
   if(!cart.quantity)fail('Add an item to your cart first.');
   if(!account.identities.length)fail('Link your Passli account for faster checkout.');
   if(world.checkout?.status==='pending'&&world.checkout.expires>now)fail('Finish or cancel your current checkout first.');
-  const id=random(),order={version:2,orderId:id,quantity:cart.quantity,unitAmount:'50.00',maximumAmount:(cart.quantity*50).toFixed(2),currency:'USD'};
+  const id=random(),order={version:3,orderId:id,quantity:cart.quantity,unitAmount:'50.00',maximumAmount:(cart.quantity*50).toFixed(2),currency:'USD'};
   world.checkout={id,order,accountId:account.id,sessionId:world.session.id,revision:cart.revision,expires:Math.min(now+600000,account.expiresAt,world.session.expires),status:'pending'};
   world.screen='checkout-wait';return;
  }
@@ -34,7 +34,7 @@ export function checkoutAction(world,body,now,{real=false}={}){
   if(real)fail('Simulated checkout approval is unavailable in real mode.');
   if(approval.status!=='pending')fail('Approval already completed.');
   const used=account.demoAuthorizedCents||0,over=used+cart.quantity*5000>10000;
-  approval.selection={card:{recordId:'fictional-amex',label:'My AMEX',last4:'1009'},address:{recordId:'fictional-home',label:'My home',street:'50 Example Street',city:'Example City',region:'CA',postalCode:'94000',country:'US',personRecordId:'fictional-person',recipientName:'Alex Morgan'}};
+  approval.selection={card:{recordId:'fictional-amex',label:'My AMEX',last4:'1009'},address:{recordId:'fictional-home',label:'My home',street:'50 Example Street',city:'Example City',region:'CA',postalCode:'94000',country:'US',personRecordId:'fictional-person',recipientName:'Alex Morgan',emailRecordId:'fictional-email',email:'alex@example.test',phoneRecordId:'fictional-phone',phoneNumber:'+1 202 555 0123'}};
   approval.requiredLoA=over?4:2;approval.achievedLoA=approval.requiredLoA;
   account.demoAuthorizedCents=over?0:used+cart.quantity*5000;
   approval.status='approved';world.screen='checkout-confirm';return;
@@ -49,14 +49,16 @@ export function checkoutAction(world,body,now,{real=false}={}){
  fail('Unknown checkout action.');
 }
 
-export function disclosureCommitment(selection,{requireName=false}={}){
+export function disclosureCommitment(selection,{requireName=false,requireContact=false}={}){
  const c=selection?.card,a=selection?.address,named=a?.personRecordId!==undefined||a?.recipientName!==undefined,readable=v=>typeof v==='string'&&v.trim()&&v.length<=512&&!/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(v);
- if(!c||!a||Object.keys(selection).sort().join(',')!=='address,card'||Object.keys(c).sort().join(',')!=='label,last4,recordId'||Object.keys(a).sort().join(',')!==(named?'city,country,label,personRecordId,postalCode,recipientName,recordId,region,street':'city,country,label,postalCode,recordId,region,street')||requireName&&!named||Object.values(a).some(v=>!readable(v))||!readable(c.recordId)||!readable(c.label)||!/^\d{4}$/.test(c.last4))fail('Invalid checkout information.');
- const hash=createHash('sha256').update(JSON.stringify([named?'passli:checkout-address:v2':'passli:checkout-address:v1',a.recordId,a.label,a.street,a.city,a.region,a.postalCode,a.country,...(named?[a.personRecordId,a.recipientName]:[])]),'utf8').digest('hex');
+ const contact=a&&['emailRecordId','email','phoneRecordId','phoneNumber'].some(k=>a[k]!==undefined);
+ const keys=['recordId','label','street','city','region','postalCode','country',...(named?['personRecordId','recipientName']:[]),...(contact?['emailRecordId','email','phoneRecordId','phoneNumber']:[])].sort().join(',');
+ if(!c||!a||Object.keys(selection).sort().join(',')!=='address,card'||Object.keys(c).sort().join(',')!=='label,last4,recordId'||Object.keys(a).sort().join(',')!==keys||requireName&&!named||requireContact&&!contact||contact&&(!named||['emailRecordId','email','phoneRecordId','phoneNumber'].some(k=>!readable(a[k])))||Object.values(a).some(v=>!readable(v))||!readable(c.recordId)||!readable(c.label)||!/^\d{4}$/.test(c.last4))fail('Invalid checkout information.');
+ const hash=createHash('sha256').update(JSON.stringify([contact?'passli:checkout-address:v3':named?'passli:checkout-address:v2':'passli:checkout-address:v1',a.recordId,a.label,a.street,a.city,a.region,a.postalCode,a.country,...(named?[a.personRecordId,a.recipientName]:[]),...(contact?[a.emailRecordId,a.email,a.phoneRecordId,a.phoneNumber]:[])]),'utf8').digest('hex');
  return {card:{...c},address:{recordId:a.recordId,label:a.label,hash}};
 }
 export function acceptCheckoutDisclosure(world,selection){
- const checkout=world.checkout;if(!checkout?.commitment||canonical(disclosureCommitment(selection,{requireName:checkout.order.version===2}))!==canonical(checkout.commitment))fail('The address or card does not match the signed checkout consent.');
+ const checkout=world.checkout;if(!checkout?.commitment||canonical(disclosureCommitment(selection,{requireName:checkout.order.version>=2,requireContact:checkout.order.version>=3}))!==canonical(checkout.commitment))fail('The shipping or contact information or card does not match the signed checkout consent.');
  checkout.selection=selection;checkout.status='approved';world.screen='checkout-confirm';
 }
 

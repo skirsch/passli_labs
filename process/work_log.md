@@ -361,3 +361,11 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: docs/reports/demo024_phone_signin.md and sanitized evidence (private); docs/releases/demo024_phone_signin.md (Labs).
 - Results: 64 tests passed locally/frozen/host-image; public0.1.24 assets matched; Chrome visible button and same-tab mobile-app option verified; no customer login or disclosure. Image/env/data retained.
 - Next steps: physical phone completion acceptance; separate historical unlink LoA site attribution remains pending exact row evidence.
+
+## 2026-10-26 - Checkout v3 email and phone consent
+
+- What we did: Demo025 requests name, email, phone, card and shipping address; checks the exact v3 disclosure commitment; displays approved contacts at Purchase. Pending v1/v2 orders remain compatible.
+- Command / executable: node --test test/*.test.mjs in demo; git diff --check.
+- Outputs: demo/checkout.mjs, demo/public/app.js, tests and demo/README.md. Branch codex/checkout-contact-fields; starting commit 76fde4b1b1512e82192651ed39877e0d74740df2 in C:/Users/stk/.codex/worktrees/checkout-contact-fields/passli_labs.
+- Results: all 65 tests passed. Companion Passli API611/app758 implementation on codex/checkout-fields. No deployment, push, main integration or physical-device acceptance.
+- Next steps: coordinate with Passli API/web release approval before Demo025 activation; validate real browser/phone checkout.

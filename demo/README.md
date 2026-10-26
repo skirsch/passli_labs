@@ -233,9 +233,12 @@ PAN and CVV do not enter Passli signing requests. A retry finishes the same
 approved order without an additional signature/spending reservation. Continue
 checkout on Cart resumes a pending approval or approved purchase review.
 
-New orders use checkout version 2. The versioned address commitment includes the
-selected Person record ID and full recipient name; missing or changed names reject
-delivery. Pending version 1 orders retain their original compatibility and expiry.
+New orders use checkout version 3. The versioned address commitment includes the
+selected Person record ID, full recipient name, Email record ID/value and Phone
+record ID/value. Missing or changed shipping/contact values reject delivery.
+Passli labels each slot and preselects its scoped saved default before explicit
+approval. The Demo shows the approved email and phone at final Purchase.
+Pending version 1/2 orders retain their original compatibility and expiry.
 Checkout-specific provider authority never creates a merchant identity link.
 
 
