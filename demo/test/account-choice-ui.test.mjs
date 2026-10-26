@@ -23,6 +23,20 @@ test('settings shows exactly one Link or Unlink Passli action matching current l
  }
 });
 
+test('Continue with Passli is visible without discovery and starts only on an explicit click',async()=>{
+ for(const mode of ['real','walkthrough']){
+  const state={mode,screen:'login',installed:false,csrf:'csrf'};
+  const ui=page(state,{reply:{ok:true,body:{redirect:'https://api.passli.app/direct/login?state=synthetic',state}}});
+  const button=ui.html.match(/<button[^>]*data-action="passli-start"[^>]*>/)?.[0];
+  assert.ok(button);assert.ok(!/\bhidden\b/.test(button));assert.match(ui.html,/Continue with Passli/);assert.match(ui.html,/data-form="login"/);
+  assert.equal(ui.sent.length,0);assert.equal(ui.navigated.length,0);
+  assert.equal(ui.elements.get('#installation').hidden,mode==='real');
+  ui.listeners.get('click')({target:{closest:selector=>selector==='button[data-action]'?{type:'button',dataset:{action:'passli-start'}}:null}});await new Promise(setImmediate);
+  assert.equal(ui.sent.length,1);assert.equal(ui.sent[0].body.action,'passli-start');assert.equal('installed' in ui.sent[0].body,false);
+  assert.deepEqual(ui.navigated,['https://api.passli.app/direct/login?state=synthetic']);
+ }
+});
+
 for(const linked of [false,true])test('cart shows the correct Passli action for linked='+linked,async()=>{
  const state={mode:'real',screen:'cart',csrf:'csrf',account:{id:'account',linked},cart:{quantity:1,totalCents:5000,purchasedCents:0}},ui=page(state);
  assert.equal(ui.html.includes('Link your Passli account for faster checkout'),!linked);assert.equal(ui.html.includes('data-action="checkout-start"'),linked);

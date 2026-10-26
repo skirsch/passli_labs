@@ -1,7 +1,7 @@
 # Direct/FedCM compatibility reference
 
-Version: 4
-Updated: 2026-10-24
+Version: 5
+Updated: 2026-10-26
 Status: Existing demonstration profile; not the protected threshold-login protocol.
 
 Read the [site integration requirements](Passli_site_integration_spec.md) and
@@ -55,7 +55,7 @@ Do not log callback codes or forward assertions in URLs.
 
 ## FedCM
 
-After positive installation detection and a user click, obtain a nonce from
+After an explicit user click on Continue with Passli, obtain a nonce from
 the site's backend and bind it to a single-use transaction. The existing
 reference requests an assertion using this browser shape:
 

@@ -1,7 +1,7 @@
 # Integration readiness
 
-Version: 3
-Updated: 2026-10-24
+Version: 4
+Updated: 2026-10-26
 
 ## What this repository provides
 
@@ -18,7 +18,7 @@ API denial after provider lock. Physical browser/phone acceptance is separate.
 | Direct login with state, nonce and S256 PKCE | Implemented in the live demo using real provider assertions |
 | FedCM assertion and backend token verification | Existing compatibility demonstration; browser support must be validated |
 | Server verification of provider grant/session | Existing compatibility demonstration |
-| Installation discovery | Extension discovery building blocks exist; public shared adapter and platform matrix are pending |
+| Login button visibility | Always show Continue with Passli; extension or app detection is not required |
 | Installed app/PWA detection | Requires supported platform APIs and verified app/site association; universal detection is unavailable |
 | Existing-site account lookup, explicit linking and new-account choice | Implemented in the demo backend; replace its fictional local authentication with the target site's real login/MFA |
 | Suspension/resume and protected API enforcement | Demo backend checks provider status; local tests cover wrong-account resume and unchanged deadlines; live provider-lock denial verified |

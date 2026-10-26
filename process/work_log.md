@@ -348,3 +348,9 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Command: node --test demo/test/flows.test.mjs (42pass). Initial testexpected400corrected to existing409conflict contract; no productbehaviorchangefromthatassertion.
 - Outputs: version024server/model source and two regressions: undiscovered explicitstartstillrequiresprovidercallback, no account/session early; requestcannotoverridewalkthroughgate. LiveDemo023baselineall24runtimefiles/currentcontainer/image/restarts verified read-only.
 - Next: User chooses secondaryphoneoption vsalwaysshow; implementchosenUI/spec, completefulltests/browserQA/freeze andexactcoordinatorapproval beforedeploy. API/native/PIN/unlink-audit behaviorunchanged.
+
+### 2026-10-26 - Demo024 always-visible Continue with Passli
+- What: User chose Always show Continue withPassli. Removedextension-onlyvisibility/discoveryposts; realmodealwaysshowsproviderbutton, walkthroughonlyinstallationcontrolsarehiddeninrealmode. Revisedpublicspec20/compatibility5/readiness4/demoREADME20 toreplaceinstalled-onlypolicy.
+- Command: node --test demo/test/*.test.mjs (64pass); actualChrome localreal-modeUI withisolatedsyntheticprovider.
+- Results: initialpagebuttonvisiblealongsidepasswordlogin; explicitclicknavigatesexistingtabtoboundedlocalproviderhandoff; noaccountlogin/approvalsubmitted. Normalcallbackauthentication remainsrequired, installedflagstaysfalsewithoutdetection.
+- Next: freeze024, exacthost-imageQA+coordinatorapprovedactivation, publichash/actualUIverification. NoAPI/native/PIN/unlink-audit changes.

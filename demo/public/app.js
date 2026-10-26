@@ -8,7 +8,7 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp
 const action = (name, label, style = 'primary', extra = '') => `<button ${extra.includes('type=') ? '' : 'type="button"'} class="${style}" data-action="${name}" ${extra}>${label}</button>`;
 const cancel = () => action('cancel', 'Cancel', 'subtle cancel');
 const heading = (title, text = '') => `<div class="auth-heading"><h1>${title}</h1>${text ? `<p class="muted">${text}</p>` : ''}</div>`;
-const passliButton = () => {const hidden=(state.mode === 'real' ? discovered : state.installed)?'':'hidden';return `<div class="divider" ${hidden}>or</div><button type="button" class="provider" data-action="passli-start" ${hidden}><img src="/passli-mark.svg" alt="" width="20" height="20">Continue with Passli</button>`;};
+const passliButton = () => `<div class="divider">or</div><button type="button" class="provider" data-action="passli-start"><img src="/passli-mark.svg" alt="" width="20" height="20">Continue with Passli</button>`;
 const localForm = (purpose = 'login') => `<form data-form="${purpose}"><label for="username">Email address</label><input id="username" name="username" type="email" maxlength="254" required autocomplete="off" value="avery@example.test"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="off" value="demo" required><p class="small muted">Enter any email address with password <strong>demo</strong> to try a fictional existing account. No email is sent or verified.</p>${action(purpose, purpose === 'login' ? 'Sign in' : 'Sign in to existing account', 'primary', 'type="submit"')}</form>`;
 let expiryTimer;
 let actionBusy=false,refreshBusy=false,stateRevision=0;
@@ -24,8 +24,10 @@ function render() {
   document.querySelector('#walkthrough-link').hidden = state.mode !== 'real';
   document.querySelector('#installation').value = String(state.installed);
   document.querySelector('#installation').disabled = state.mode === 'real';
+  document.querySelector('#installation').hidden = state.mode === 'real';
+  document.querySelector('label[for="installation"]').hidden = state.mode === 'real';
   document.querySelector('[data-action="reset"]').hidden = state.mode === 'real';
-  document.querySelector('.tools-body > .muted').textContent = state.mode === 'real' ? 'This site uses real Passli Direct login. Northstar accounts and projects are fictional. The Passli button appears after extension discovery; unsupported app-only discovery remains hidden.' : 'Try the full journey with fictional accounts. Approvals and installation status are simulated.';
+  document.querySelector('.tools-body > .muted').textContent = state.mode === 'real' ? 'This site uses real Passli Direct login. Northstar accounts and projects are fictional. Continue with Passli is available with the phone app or browser extension.' : 'Try the full journey with fictional accounts. Approvals and installation status are simulated.';
   document.querySelector('#header-actions').innerHTML = account ? `${action('home', 'Overview', 'subtle')}${action('cart', 'Cart', 'subtle')}${action('settings', 'Settings', 'subtle')}${action('logout', 'Sign out', 'subtle')}` : '';
   document.querySelector('#session-tools').innerHTML = state.mode === 'walkthrough' && state.sessionMethod === 'passli' ? `${action('suspend', 'Simulate Passli session suspension', 'subtle')}${action('terminate', 'Simulate Passli session termination', 'subtle')}${action('provider-error', 'Simulate provider unavailable', 'subtle')}` : '';
   const views = {
@@ -60,7 +62,6 @@ async function refresh() {
   const changed=JSON.stringify(state)!==JSON.stringify(next);state=next;
   if(changed)render();
   if (state.message) notice(state.message);
-  if (state.mode === 'real') discover();
   }finally{refreshBusy=false;}
 }
 function notice(message) {
@@ -100,20 +101,6 @@ document.addEventListener('submit', event => {
   void send(purpose, purpose==='notes-save'?{notes:event.target.elements.notes.value,accountId:state.account?.id}:{username:event.target.elements.username?.value, password:event.target.elements.password?.value});
 });
 document.querySelector('#installation').addEventListener('change', event => void send('installation', {installed:event.target.value === 'true'}));
-let discovered = false;
-function discover() {
-  const present = provider => provider?.isPassli === true || provider?.isPassliSafeWallet === true;
-  if (!discovered && (present(window.passliSafeWallet) || present(window.ethereum))) {
-    discovered = true;
-    void send('installation', {installed:true});
-  }
-  window.dispatchEvent(new Event('eip6963:requestProvider'));
-}
-window.addEventListener('eip6963:announceProvider', event => {
-  if (state?.mode === 'real' && !discovered && event.detail?.info?.rdns === 'app.passli.hyperliquid' && event.detail?.provider?.isPassli === true) {
-    discovered = true; void send('installation',{installed:true});
-  }
-});
 window.addEventListener('focus', () => void refresh().catch(() => notice('Unable to verify the current session.')));
 document.addEventListener('visibilitychange', () => {if (!document.hidden) void refresh().catch(() => notice('Unable to verify the current session.'));});
 await refresh().catch(() => {app.innerHTML = '<h1>Demo unavailable</h1><p>Please reload to try again.</p>';});

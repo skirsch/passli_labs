@@ -1,7 +1,7 @@
 # Northstar: complete site integration demo
 
-Version: 19
-Updated: 2026-10-25
+Version: 20
+Updated: 2026-10-26
 
 Northstar is a fictional site with an actual server-side account/linking model.
 The default service mode uses real Passli Direct authentication. Registration requests name, phone and email with Passli consent and authorized device delivery. Login and linking request no profile data. It uses a site-specific public subject and verifies the signed assertion
@@ -81,7 +81,7 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
 
 | File | Responsibility |
 | --- | --- |
-| `public/app.js`, `public/style.css` | Compact site UI, account screens and presentation-only extension discovery |
+| `public/app.js`, `public/style.css` | Compact site UI, account screens and always-visible Passli sign-in |
 | `server.mjs` | HTTP, origin/CSRF checks, cookie rotation, SQLite persistence, real callbacks and unique global bindings |
 | `model.mjs` | Explicit setup/link/register/unlink/session state transitions |
 | `pii.mjs` | Origin-bound disclosure validation, exact approved fields and delivery-token checks |
@@ -112,13 +112,12 @@ before atomic removal. Ordinary login tokens and old site credentials cannot
 authorize unlink. Cancellation/failure retains the link; dependent site sessions
 end only after verified unlink. See `unlink.mjs` and the compatibility reference.
 
-Real installation discovery supports the current Passli extension's EIP-6963
-announcement/provider markers on fresh page loads, without requesting accounts.
-Those signals control UI only and can be imitated. App-only detection and
-universal browser/platform discovery are unfinished. Unsupported or absent
-discovery keeps the button hidden. No stored installed flag reveals the button
-on a fresh load before discovery. Verify stale/uninstalled extension behavior
-in your supported environments.
+Continue with Passli is always visible, including without a browser extension.
+A phone-app user explicitly starts the same-tab Direct flow; normal provider
+verification and account setup/linking still apply. No extension discovery or
+stored installation flag controls the real login button, and merely rendering
+it never starts authentication. The installation control is a walkthrough-only
+simulation and is hidden in real mode.
 
 The Direct profile is provider-token compatibility authentication. It is not
 the unfinished protected threshold-login target. Real browser/phone acceptance

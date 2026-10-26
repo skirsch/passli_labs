@@ -1,7 +1,7 @@
 # Passli Site Integration Specification
 
-Version: 19
-Updated: 2026-10-25
+Version: 20
+Updated: 2026-10-26
 Status: Public integration requirements; implementation gaps and open decisions are identified below.
 
 ## Purpose and use
@@ -23,62 +23,27 @@ for the requirements here. Do not interpret an open decision as approved policy,
 or an example API as an available production SDK. Report missing dependencies
 and unresolved decisions that prevent completing an implementation.
 
-## 1. Temporary visibility rule: installed users only
+## 1. Login visibility: always offer Continue with Passli
 
-**Confirmed, 2026-10-24:** for now, show **Login with Passli** only when the
-current browser context positively detects an installed Passli application/PWA
-or the Passli browser extension. The purpose is to avoid confusing existing site
-users who do not use Passli. This is the default integration policy until an
-explicit later revision changes it.
+**Revised by the user, 2026-10-26:** always show **Continue with Passli** on the
+site login page, including when no browser extension or installed-app signal is
+available. This supersedes the earlier installed-only visibility rule. Phone-app
+users must be able to start the normal Passli ceremony without an extension.
+Keep the site's other login and registration methods available alongside it.
 
-| Detection result | Login page behavior |
-| --- | --- |
-| Passli app/PWA detected | Show Login with Passli |
-| Passli extension detected | Show Login with Passli |
-| Neither detected | Hide the button |
-| Pending, unavailable, denied, timed out or failed | Hide the button |
+A visible button is an entry point, not proof that Passli is installed, signed in,
+unlocked, enrolled or linked to the site. A site cannot reliably infer a native
+phone installation or a session on another device from its browser context.
+Do not manufacture an installed flag, wallet connection or identity to show the
+button. Optional discovery must not gate visibility or authorization.
 
-Keep the button hidden from the initial render, including server-rendered HTML,
-until detection succeeds. Do not flash it and then remove it. Hidden controls
-must not remain focusable or be announced as available by assistive technology.
-Keep the site's normal login and registration usable without waiting for detection.
-Do not replace the hidden button with a Passli installation promotion for now.
-
-Installation is different from being logged in, unlocked, enrolled or linked to
-this site. A detected installation may show the button while locked or logged
-out; the normal Passli ceremony handles authentication. A previous Passli login,
-an existing account binding, a stored preference or a successful provider HTTP
-request is not evidence of a current installation. An app on another device or
-an extension in another browser/profile does not meet this visibility rule.
-
-### Detection implementation boundary
-
-Use a documented Passli discovery adapter or supported platform mechanism. It
-must work without automatically opening an app, popup, permission prompt,
-account connection or signing request. Do not probe custom URL schemes using
-focus/timing heuristics, enumerate installed software, or request wallet accounts
-merely to decide whether to display a login control.
-
-Current extension source exposes EIP-6963 provider announcements, an
-`isPassli` provider marker, `window.passliSafeWallet`, and a content-script
-runtime status message. These are discovery building blocks, not an established
-public Passli-login detection SDK. A shared adapter must handle initial discovery,
-late injection, mixed versions and stale page providers. Inspect current source
-before selecting the exact interface; do not infer a new API from this document.
-Page-visible markers can be imitated, so they govern presentation only.
-
-For installed app/PWA detection, use only a supported browser/platform mechanism
-with its required app/site association. `navigator.getInstalledRelatedApps()`
-does not provide a universal installed-app inventory: it requires a verified
-relationship and has platform, origin and scope restrictions. A site's own
-standalone display mode does not prove Passli is installed. Where no reliable
-Passli installation signal is available, retain the hidden state and document
-that platform gap. Do not silently change the rule to always show the button.
-
-Discovery should return only availability/capability information, not a global
-Passli identity, wallet address or profile. Avoid permanent installation flags;
-re-evaluate on a fresh page load and supported discovery updates. Detection
-must never create a site session, link an account or authorize protected data.
+Start authentication only after an explicit user click. Use the normal same-tab
+Direct flow or the supported FedCM ceremony and preserve state, nonce, PKCE,
+registered origin/callback, expiry, replay protection and verification. Rendering
+the page must not open an app, popup, permission request or signing prompt.
+Never probe custom URL schemes using timing/focus heuristics or request wallet
+accounts merely to draw a login button. A user without an active Passli session
+uses the normal Passli login options; showing the button grants no site access.
 
 ## 2. Integration inputs and implementation status
 
@@ -86,7 +51,7 @@ Before implementing, identify the site's login framework, registration flow,
 stable account IDs, session store, authenticated middleware and protected APIs.
 Obtain the supported Passli protocol profile, environment-specific client ID,
 issuer, allowed origins/callbacks, verification-key source, required assurance,
-session-status contract and discovery adapter. Do not copy RP1's client identity.
+session-status contract. Installation discovery is optional. Do not copy RP1's client identity.
 
 RP1 is the mechanical reference for existing Direct/FedCM compatibility flows.
 It is a demonstration, not a universal production SDK. Its in-memory maps are
@@ -102,8 +67,8 @@ or invent missing protocol endpoints, credentials or signing behavior.
 
 ## 3. Login ceremony and backend verification
 
-1. After positive installation detection, attach Login with Passli to the site's
-   normal login page, using its existing UI components and accessible feedback.
+1. Show Continue with Passli on the site's normal login page, using its existing
+   UI components and accessible feedback; installation detection is not required.
 2. On a user click, create a short-lived, single-use server-owned login transaction.
    Bind the browser attempt, intended operation, origin, nonce, assurance and
    allowed return destination. Restrict return destinations to avoid open redirects.
@@ -383,7 +348,7 @@ Revalidate before revealing data or resuming protected operations. Backend
 enforcement is required even when a page overlay is present. Previously shown
 data cannot be recalled, and focus checks alone do not promise instant locking
 across tabs. Installation discovery failure must not bypass authorization or
-unlink an existing account; it only controls showing a new login button.
+unlink an existing account. The login button remains available independently.
 
 Resume keeps the same local account and original session expiry. Another Passli
 identity cannot inherit the suspended session. Pending setup/link transactions
@@ -404,13 +369,13 @@ and internal cluster connections have different ownership.
 
 Verify the real supported flow and report evidence for:
 
-- No installation: no Passli button, focus target, initial flash or installation
-  promotion; ordinary login remains usable. Repeat for unsupported, denied,
-  timed-out and failed discovery.
-- Detected extension and supported installed app/PWA: button appears without
-  requesting accounts or approval. Include locked/logged-out installs, late
-  discovery and stale/unloaded extension contexts. A forged presentation signal
-  never grants authenticated access.
+- Continue with Passli remains visible and keyboard-accessible with no extension,
+  no app-detection signal, denied/failed discovery, or a locked/logged-out app.
+  Ordinary login remains usable. Rendering alone never starts authentication,
+  requests wallet accounts, opens the app or displays an approval prompt.
+- A phone-app user without an extension can explicitly start the normal verified
+  ceremony. No installation flag or detected marker grants authenticated access;
+  a missing/invalid/expired provider callback still fails closed.
 - Exactly one linked account: direct login. Multiple linked accounts: list only
   that verified identity's accounts, require explicit selection and deny protected
   access until completion. Test each account's independent notes/data, another

@@ -54,9 +54,9 @@ backend, cookie and database and labels all approvals as simulated. You can also
 
 Use **Continue with Passli** alongside other provider options, or **Login with
 Passli** to match the site's wording. The host site draws the button; Passli
-supplies the logo. Show it only after positive
-Passli installation detection in the current browser context; normal site login
-must remain available. Installation signals control presentation only.
+supplies the logo. Always show the button, including without extension or app
+detection, so phone-app users can sign in. Start the verified Passli ceremony only
+after a user click; normal site login remains available alongside it.
 
 ## Downloads and contributions
 
