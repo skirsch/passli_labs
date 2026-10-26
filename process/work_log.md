@@ -342,3 +342,9 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - What: Published frozen400bae checkout source after API609/app753.61 local and61 host-image tests passed; public health23 and JS/style hashes matched.
 - Outputs: docs/releases/demo023_checkout.md. Fictional browser cart quantity0 to1 to0 and totals$0 to$50 to$0 verified, unlinked CTA and disabled minus atzero. No customer disclosure/purchase submitted.
 - Next: User acceptance on refreshed pages and mobileCode753; physical-device reset remains unverified.
+
+### 2026-10-26 - Demo024 explicit phone-app login preparation
+- What: Confirmed extension-only discovery hides real Passli login for phone-app users. Added a trusted real-mode server option allowing explicit Passli start without inventing installation detection; walkthrough simulation keeps its install gate. UI prominence choice remains pending user answer because the existing spec requires installed-only automatic presentation.
+- Command: node --test demo/test/flows.test.mjs (42pass). Initial testexpected400corrected to existing409conflict contract; no productbehaviorchangefromthatassertion.
+- Outputs: version024server/model source and two regressions: undiscovered explicitstartstillrequiresprovidercallback, no account/session early; requestcannotoverridewalkthroughgate. LiveDemo023baselineall24runtimefiles/currentcontainer/image/restarts verified read-only.
+- Next: User chooses secondaryphoneoption vsalwaysshow; implementchosenUI/spec, completefulltests/browserQA/freeze andexactcoordinatorapproval beforedeploy. API/native/PIN/unlink-audit behaviorunchanged.

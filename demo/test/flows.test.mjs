@@ -138,6 +138,25 @@ test('real mode uses provider callbacks, persists cross-browser bindings and rej
   await other.ok('settings');await complete(other,'unlink');
   await complete(other,'passli-start');assert.equal(other.state.screen,'setup');assert.equal(calls,5);
 });
+
+test('real phone-app login starts without extension detection and still requires the provider callback',async t=>{
+ let completed=0;
+ const provider={begin(proof){proof.state='phone-'+proof.id;return 'https://provider.example/login?state='+proof.state;},async complete(){completed++;return {identity:'p'.repeat(43),association:{subject:'p'.repeat(43),grantId:'grant',sessionId:'session',clientId:'demo'}};},async status(){return 'active';}};
+ const {c}=await fixture(t,{mode:'real',provider});
+ assert.equal(c.state.installed,false);
+ const begin=await c.ok('passli-start');assert.match(begin.redirect,/^https:\/\/provider.example\/login/);
+ assert.equal(c.state.installed,false,'User intent must not invent installation detection');
+ assert.equal(c.state.account,null);assert.equal(completed,0);
+ assert.equal((await c.action('approve',{identity:'p'.repeat(43)})).response.status,403);
+ const callback=await c.callback(new URL(begin.redirect).searchParams.get('state'));assert.equal(callback.response.status,303);await c.init();
+ assert.equal(completed,1);assert.equal(c.state.screen,'setup');assert.equal(c.state.account,null,'A verified unbound identity must still complete normal setup');
+});
+
+test('walkthrough installation remains simulated and cannot be overridden by a request field',async t=>{
+ const {c}=await fixture(t);await c.ok('installation',{installed:false});
+ assert.equal((await c.action('passli-start',{allowUndetectedPassli:true})).response.status,409);
+ assert.equal(c.state.screen,'login');assert.equal(c.state.account,null);
+});
 test('cancelled setup reappears; registration binds a separate account atomically',async t=>{
   const {c}=await fixture(t);await c.login();const original=(await c.request('/api/private')).body.accountId;await c.ok('logout');
   await c.ok('passli-start');await c.approve();await c.ok('choose-create');await c.ok('cancel');

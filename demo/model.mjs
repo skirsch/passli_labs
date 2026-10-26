@@ -87,7 +87,7 @@ function localAccount(world, body, now) {
   return account;
 }
 
-export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnlink=false,personalInformation,loginAccounts} = {}) {
+export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnlink=false,personalInformation,loginAccounts,allowUndetectedPassli=false} = {}) {
   expire(world, now);
   const action = body.action;
   if(!['select-account','installation'].includes(action))world.accountChoice=null;
@@ -114,7 +114,7 @@ export function act(world, body, now = Date.now(), {verifiedIdentity,verifiedUnl
     }
     case 'passli-start':
       if (world.session) fail('Sign out before starting a new login.');
-      if (!world.installed) fail('Passli is not available in this walkthrough context.');
+      if (!world.installed&&!allowUndetectedPassli) fail('Passli is not available in this walkthrough context.');
       world.setup = null; pending(world,'login',now); return '';
     case 'approve': {
       const proof = checkProof(world,body,now,verifiedIdentity);
