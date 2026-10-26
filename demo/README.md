@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 14
+Version: 19
 Updated: 2026-10-25
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -64,9 +64,9 @@ retain the `/walkthrough` prefix and use a separate HttpOnly cookie. Set
    account; select one to access its own projects and saved notes.
 4. **Link from settings:** ordinary fictional Northstar login → Settings →
    Link Passli → fresh Passli proof → linked. The settings button starts the
-   transaction immediately, without another site confirmation screen. It remains
-   available when already linked: the same identity/account pair is idempotent,
-   and the same identity can link to additional authenticated Northstar accounts.
+   transaction immediately, without another site confirmation screen. After linking,
+   that single button becomes Unlink Passli. Settings never shows both actions.
+   The same identity can still link to additional authenticated Northstar accounts.
 5. **Unlink:** Settings → Unlink Passli → immediately open Passli for fresh
    Passli unlink signature at LoA 4 or higher. No old site password is requested.
    Projects remain; Passli-established sessions end. A
@@ -200,13 +200,19 @@ See the [deployment acceptance checklist](../docs/disabled_devices_deployment_te
 
 ## Card checkout (local candidate)
 
-Open **Cart**, add or remove $50 items, then choose **Checkout with Passli**.
-In real mode, sign in using Passli first. The popup asks for the exact maximum
-USD amount and your saved CreditCard and Address records. It shares a masked
+Open **Cart**, use the compact **+** and **−** buttons on the left below Quantity
+to add or remove $50 items, then choose **Checkout with Passli**.
+The pending same-tab correction navigates to a Passli-served review of the exact
+USD total/maximum and saved name, CreditCard and Address records. A password-based
+merchant customer first links Passli explicitly from the cart. The link button
+reads "Link your Passli account for faster checkout"; approval, cancellation or
+expiry returns to the same cart. Linked accounts see Checkout with Passli.
+Checkout authorization preserves the merchant account/session and must use one
+of its currently linked Passli identities. It shares a masked
 card reference and the displayed shipping address, then Northstar shows a separate
 **Purchase** confirmation. No card is charged; a real processor integration is
 outside this demonstration. These checkout changes require the corresponding
-Passli API and web candidate and are not deployed with demo019.
+Passli API and web candidate. The same-tab/name correction is not yet deployed.
 
 Passli applies its device payment policy to cumulative authorized amounts. An
 approved amount counts even if the final Purchase is abandoned. A successful
@@ -220,10 +226,20 @@ verification of the pairwise user signature and Passli attestation. No PAN or CV
 is sent to or stored by the demo. Cart/order data expires with the account.
 
 
-The address is delivered directly from the authorized device to
+The selected name and address are delivered directly from the authorized device to
 `/api/checkout-release`; Passli signs a versioned SHA-256 commitment and masked
 card reference. The site checks the exact signed commitment, live provider
-session, current cart and fixed expiry before accepting it. Plaintext address,
+session, current cart and fixed expiry before accepting it. Plaintext name/address,
 PAN and CVV do not enter Passli signing requests. A retry finishes the same
 approved order without an additional signature/spending reservation. Continue
 checkout on Cart resumes a pending approval or approved purchase review.
+
+New orders use checkout version 2. The versioned address commitment includes the
+selected Person record ID and full recipient name; missing or changed names reject
+delivery. Pending version 1 orders retain their original compatibility and expiry.
+Checkout-specific provider authority never creates a merchant identity link.
+
+
+## Release status
+
+Demo022 is deployed with the single Link/Unlink action; see `docs/releases/demo022_single_link_button.md`. The full checkout candidate is Demo023, paired with API609/app753, and remains subject to exact production approval. Record and source checkpoints do not imply deployment.

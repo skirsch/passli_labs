@@ -1,6 +1,6 @@
 # Demo site implementation plan
 
-Version: 14
+Version: 18
 Updated: 2026-10-25
 Status: Implemented with real Passli Direct authentication at https://demo.passli.app.
 
@@ -20,8 +20,8 @@ the live demo. Preserve the compact sign-in page approved in the button mockup.
    appears again on a later Passli login.
 3. Linking: prove control of the existing site account, confirm the named target,
    obtain fresh Passli proof for that same identity and commit a unique
-   identity/account pair. Keep Link Passli available when already linked;
-   re-linking the same pair is idempotent and another account adds another link.
+   identity/account pair. Settings shows one action: Link Passli while unlinked,
+   replaced by Unlink Passli after linking. Another account can add its own link.
 4. Registration: one Create account with Passli button, no local name/phone/email form. Request those fields in the Passli popup, use approved PII supplied by the authorized device, then atomically create the account and binding. Missing, denied, expired or cancelled sharing creates no account.
 5. Returning linked identity: one linked account opens directly. Multiple linked
    accounts show Choose your account with recognizable names/emails. Only that
@@ -129,17 +129,27 @@ not an explicit Cancel. Keep the original request/account deadlines unchanged.
 ## Card checkout extension (local candidate)
 
 Cart navigation, $50 add/remove controls, a large Checkout with Passli button,
-saved card/address consent, an exact authorization cap, and a separate Purchase
+saved name/card/address consent, an exact authorization cap, and a separate Purchase
 confirmation demonstrate cumulative device spending policy. Real mode uses
 structured signed checkout fields; walkthrough approval remains simulated. No
-processor capture is performed. Checkout is not part of the deployed demo019.
+processor capture is performed. Same-tab/name consent is a pending source correction;
+release activation is held separately.
 See [the checkout implementation contract](../demo/README.md#card-checkout-local-candidate).
 
 
-The address is delivered directly from the authorized device to
+The selected name and address are delivered directly from the authorized device to
 `/api/checkout-release`; Passli signs a versioned SHA-256 commitment and masked
 card reference. The site checks the exact signed commitment, live provider
-session, current cart and fixed expiry before accepting it. Plaintext address,
+session, current cart and fixed expiry before accepting it. Plaintext name/address,
 PAN and CVV do not enter Passli signing requests. A retry finishes the same
 approved order without an additional signature/spending reservation. Continue
 checkout on Cart resumes a pending approval or approved purchase review.
+
+Unlinked carts show "Link your Passli account for faster checkout" using the
+existing explicit link flow, then return to the preserved cart. Checkout is shown
+and accepted only after linking; its approval identity must remain linked.
+
+
+## Release status
+
+Demo022 is deployed with the single Link/Unlink action; see `docs/releases/demo022_single_link_button.md`. The full checkout candidate is Demo023, paired with API609/app753, and remains subject to exact production approval. Record and source checkpoints do not imply deployment.
