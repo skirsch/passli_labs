@@ -354,3 +354,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Command: node --test demo/test/*.test.mjs (64pass); actualChrome localreal-modeUI withisolatedsyntheticprovider.
 - Results: initialpagebuttonvisiblealongsidepasswordlogin; explicitclicknavigatesexistingtabtoboundedlocalproviderhandoff; noaccountlogin/approvalsubmitted. Normalcallbackauthentication remainsrequired, installedflagstaysfalsewithoutdetection.
 - Next: freeze024, exacthost-imageQA+coordinatorapprovedactivation, publichash/actualUIverification. NoAPI/native/PIN/unlink-audit changes.
+
+## 2026-10-26 Demo024 always-visible Passli release
+- What we did: implemented the explicit Always show Continue with Passli choice, revised installed-only specs, froze minimal runtime overlay and deployed with separate coordinator stage/activate approvals.
+- Command / executable: node --test demo/test/*.test.mjs; frozen overlay tests; approved deploy024.py --stage and --activate.
+- Outputs: docs/reports/demo024_phone_signin.md and sanitized evidence (private); docs/releases/demo024_phone_signin.md (Labs).
+- Results: 64 tests passed locally/frozen/host-image; public0.1.24 assets matched; Chrome visible button and same-tab mobile-app option verified; no customer login or disclosure. Image/env/data retained.
+- Next steps: physical phone completion acceptance; separate historical unlink LoA site attribution remains pending exact row evidence.
