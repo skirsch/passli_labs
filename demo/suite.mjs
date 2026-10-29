@@ -30,9 +30,11 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
    res.setHeader('Set-Cookie',`${cookieName}=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=1800${origin.startsWith('https:')?'; Secure':''}`);
   }
   const persist=()=>save.run(id,JSON.stringify(state));
-  if(returning){if(!state.proof||state.proof.requestId!==url.searchParams.get('signatureResult'))return false;return redirect('/'+state.demo+'/?'+url.searchParams.toString());}
+  if(returning){if((state.proof?.requestId||state.wireResult?.requestId)!==url.searchParams.get('signatureResult'))return false;return redirect('/'+state.demo+'/?'+url.searchParams.toString());}
   if(locks.has(id))return json(409,{error:'This demo request is being checked. Wait for it to finish.'});
   locks.add(id);
+  let wireAttempt;
+  const wireOutcome=(outcome,message)=>{state.wireResult={requestId:wireAttempt.requestId,amount:wireAttempt.json.amount,outcome,message};state.proof=null;};
   try{
    if(callback){
     const proof=state.login;
@@ -42,36 +44,40 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
     const verified=await passli.complete(proof,url.searchParams.get('code'));state.association=verified.association;state.message='Passli identity verified.';persist();return redirect('/'+state.demo+'/');
    }
    if(req.method==='GET'&&path==='/api/demo-suite/state'){
-    persist();return json(200,{csrf:state.csrf,mode,authenticated:!!state.association,message:state.message||'',demo:state.demo,pending:!!state.proof,requestId:state.proof?.requestId,code:state.demo==='schwab'?state.proof?.verificationCode:undefined,receipt:state.receipt});
+    persist();return json(200,{csrf:state.csrf,mode,authenticated:!!state.association,message:state.message||'',demo:state.demo,pending:!!state.proof,requestId:state.proof?.requestId,code:state.demo==='schwab'?state.proof?.verificationCode:undefined,receipt:state.receipt,wireResult:state.wireResult});
    }
    if(req.method!=='POST')return json(405,{error:'Method not allowed.'});
    if(req.headers.origin!==origin||req.headers['x-demo-csrf']!==state.csrf)return json(403,{error:'Demo state changed. Reload before continuing.'});
    let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>4096)throw Error('Request too large.');}const body=JSON.parse(raw);
    if(!['schwab','wire'].includes(body.demo))throw Error('Choose a demo.');
    const action=path.slice('/api/demo-suite/'.length);
+   if(action==='return'&&body.demo==='wire'&&state.demo==='wire'){
+    state.wireResult=null;state.receipt=null;state.message='';persist();return json(200,{returned:true});
+   }
+   if(action==='result'&&body.demo==='wire'&&state.demo==='wire'&&state.proof?.requestId===body.requestId)wireAttempt=state.proof;
    if(action==='login'){
     if(mode!=='real')throw Error('Real Passli login is available on the hosted demo. This is a local preview.');
-    state.demo=body.demo;state.proof=null;state.receipt=null;
+    state.demo=body.demo;state.proof=null;state.receipt=null;state.wireResult=null;
     const proof={action:'login',expires:now()+60000},target=passli.begin(proof);state.login=proof;persist();return json(200,{redirect:target});
    }
    if(!state.association||mode!=='real')throw Error('Connect your Passli identity before starting this demo.');
    if(await passli.status(state.association)!=='active'){state.association=null;state.proof=null;throw Error('Passli authorization ended. Connect again.');}
    if(action==='start'){
     if(state.proof)throw Error('Finish or cancel your pending demo first.');
-    state.demo=body.demo;state.receipt=null;
+    state.demo=body.demo;state.receipt=null;state.wireResult=null;
     const details=body.demo==='wire'?wireDetails(body.amount):{text:'Schwab mutual authentication demonstration. Customer: Steve Kirsch. Verify my identity for this call only. This does not authorize a wire, payment or account change.',requiredLoA:4,verificationCode:String(randomInt(0,100)).padStart(2,'0')};
     state.proof=await passli.createDemoApproval(state.association,details);persist();return json(200,body.demo==='schwab'?{code:state.proof.verificationCode,approvalUrl:state.proof.approvalUrl+'&signatureReturn=demo'}:{redirect:state.proof.approvalUrl+'&signatureReturn=demo'});
    }
-   if(action==='cancel'){state.proof=null;state.message='Demo request cancelled.';persist();return json(200,{cancelled:true});}
+   if(action==='cancel'){if(body.demo==='wire'&&state.demo==='wire'&&state.proof){wireAttempt=state.proof;wireOutcome('cancelled','Wire approval cancelled.');}state.proof=null;state.message='Demo request cancelled.';persist();return json(200,{cancelled:true});}
    if(action==='result'){
     if(state.demo!==body.demo||!state.proof||state.proof.requestId!==body.requestId||state.proof.expiresAt*1000<=now())throw Error('This approval expired or belongs to another demo.');
     const result=await passli.demoApprovalResult(state.proof);
     if(result.pending)return json(200,{pending:true});
-    if(result.cancelled){state.message=state.demo==='schwab'?(result.fraudReported?'Call verification declined. Fraud concern recorded in this demo only.':'Call verification cancelled.'):'Wire approval cancelled.';state.proof=null;persist();return json(200,{cancelled:true});}
+    if(result.cancelled){state.message=state.demo==='schwab'?(result.fraudReported?'Call verification declined. Fraud concern recorded in this demo only.':'Call verification cancelled.'):'Wire approval cancelled.';if(wireAttempt)wireOutcome('cancelled',state.message);state.proof=null;persist();return json(200,{cancelled:true});}
     if(await passli.status(state.association)!=='active')throw Error('Passli authorization ended before verification.');
-    state.receipt={text:result.fields.text,requiredLoA:result.fields.requiredLoA,achievedLoA:result.fields.achievedLoA,verificationCode:result.fields.verificationCode,verified:true};state.proof=null;state.message=state.demo==='schwab'?'Customer identity and spoken code verified by digital signature.':'Wire authorization verified. Demo only — no money moved.';persist();return json(200,{verified:true});
+    state.receipt={text:result.fields.text,requiredLoA:result.fields.requiredLoA,achievedLoA:result.fields.achievedLoA,verificationCode:result.fields.verificationCode,verified:true};if(wireAttempt)wireOutcome('approved','Wire authorization verified.');state.proof=null;state.message=state.demo==='schwab'?'Customer identity and spoken code verified by digital signature.':'Wire authorization verified. Demo only — no money moved.';persist();return json(200,{verified:true});
    }
    throw Error('Unknown demo action.');
-  }catch(error){persist();return json(400,{error:error.message});}finally{locks.delete(id);}
+  }catch(error){if(wireAttempt)wireOutcome('failed',error.message);persist();return json(400,{error:error.message});}finally{locks.delete(id);}
  };
 }

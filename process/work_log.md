@@ -405,3 +405,12 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Commands: `node --check demo/public/tv.js`; `node --test demo/test/*.test.mjs`; isolated local simulated signed-in TV UI fixture on port18887.
 - Outputs/results: 86 tests passed; browser screenshot confirms upper-right placement, click returns to sign-in, hides the header action and preserves address. UI fixture used a synthetic provider, no real Passli account/phone; closed after verification. Ignored fixture and screenshot retained with owning worktree.
 - Next steps: demo-only rollout by Coordinator on human request; demo030 supersedes ready028/029. No API/web/iOS changes or deployment performed by this chat.
+
+
+## 2026-10-28 - Demo031 wire approval result
+
+- What we did: added a dedicated amount approval result with success, cancellation or verification failure and Return to Wire funds. Persist original server amount; preserve result on reload; clear result on return while retaining identity and amount. Pending remains pending.
+- Command / executable: node --test --test-reporter=tap demo/test/*.test.mjs; local simulated-provider browser check.
+- Outputs: process/demo-suite-tests.tap; process/wire-result-preview.png (ignored local evidence).
+- Results: 90 tests pass; browser confirms result reload and return to form with original amount. No real Passli approval or money movement exercised.
+- Next steps: demo-only rollout by Coordinator, then human phone acceptance.

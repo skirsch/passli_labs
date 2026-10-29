@@ -55,6 +55,31 @@ test('suite pages, isolated login, CSRF, signed code request and one-use results
  clock+=1800001;assert.equal((await post('result',{demo:'wire',requestId:'request-2'})).response.status,403);
 });
 
+for(const outcome of ['approved','cancelled','failed','expired'])test('wire result page state: '+outcome+', original amount, return and replay protection',async t=>{
+ let clock=Date.now(),resultCalls=0,pending=true;
+ const origin='https://demo.passli.app';
+ const provider={begin:createPassli({origin}).begin,complete:async()=>({association:{subject:'identity'}}),status:async()=> 'active',
+  createDemoApproval:async(_,details)=>({...details,requestId:'wire-request',approvalUrl:'https://passli.app/?signatureRequest=wire-request',expiresAt:Math.floor(clock/1000)+600}),
+  demoApprovalResult:async proof=>{resultCalls++;if(pending)return {pending:true};if(outcome==='failed')throw Error('Signature verification failed.');if(outcome==='cancelled')return {cancelled:true};return {fields:{text:proof.text,requiredLoA:4,achievedLoA:4}};}};
+ const server=createDemo({mode:'real',origin,provider,now:()=>clock});server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));const base='http://127.0.0.1:'+server.address().port;
+ const initial=await fetch(base+'/api/demo-suite/state'),cookie=initial.headers.get('set-cookie').split(';')[0],initialState=await initial.json();
+ const state=async()=>await(await fetch(base+'/api/demo-suite/state',{headers:{Cookie:cookie}})).json();
+ const post=async(action,extra={})=>fetch(base+'/api/demo-suite/'+action,{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Demo-CSRF':initialState.csrf,'Content-Type':'application/json'},body:JSON.stringify({demo:'wire',...extra})});
+ const login=await(await post('login')).json();await fetch(base+'/auth/passli/callback?state='+new URL(login.redirect).searchParams.get('state')+'&code=code',{headers:{Cookie:cookie},redirect:'manual'});
+ await post('start',{amount:'1234.56'});
+ assert.equal((await post('result',{requestId:'foreign'})).status,400);assert.equal((await state()).wireResult,null);
+ assert.equal((await(await post('result',{requestId:'wire-request'})).json()).pending,true);assert.equal((await state()).wireResult,null);
+ pending=false;if(outcome==='expired')clock+=600001;
+ const completed=await post('result',{requestId:'wire-request',amount:'999999.99'});assert.equal(completed.status,['failed','expired'].includes(outcome)?400:200);
+ const resultState=await state();assert.equal(resultState.wireResult.amount,'1234.56');assert.equal(resultState.wireResult.outcome,outcome==='expired'?'failed':outcome);assert.equal(resultState.pending,false);
+ assert.equal(!!resultState.receipt?.verified,outcome==='approved');
+ const calls=resultCalls;assert.equal((await post('result',{requestId:'wire-request'})).status,400);assert.equal(resultCalls,calls);assert.deepEqual((await state()).wireResult,resultState.wireResult);
+ const returned=await fetch(base+'/?signatureResult=wire-request',{headers:{Cookie:cookie},redirect:'manual'});assert.equal(returned.headers.get('location'),'/wire/?signatureResult=wire-request');
+ assert.equal((await post('return')).status,200);const cleared=await state();assert.equal(cleared.wireResult,null);assert.equal(cleared.receipt,null);assert.equal(cleared.authenticated,true);
+ assert.equal((await post('start',{amount:'20.00'})).status,200);
+});
+
 test('independent verifier rejects code, wire, identity, LoA and attestation changes',()=>{
  const user=generateKeyPairSync('ed25519'),provider=generateKeyPairSync('ed25519'),publicKey=user.publicKey.export({format:'jwk'}),providerJwk={...provider.publicKey.export({format:'jwk'}),kid:'passli-fedcm-v1'},now=Math.floor(Date.now()/1000);
  const expected={text:'Verify this call only.',nonce:'n'.repeat(43),subject:publicKey.x,requestId:'request',requestedAt:now,expiresAt:now+600,origin:'https://demo.passli.app',requiredLoA:4,verificationCode:'07'};

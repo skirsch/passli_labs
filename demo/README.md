@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 25
+Version: 26
 Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -268,6 +268,11 @@ server requests LoA 3 below $1,000, LoA 4 for $1,000 through $5,000 inclusive,
 and LoA 5 above $5,000; Passli policy may require stronger assurance. No money
 moves. `suite.mjs` owns cookie-isolated state and server-derived requests;
 `signature.mjs` independently verifies both signatures and exact request fields.
+After approval, `/wire/` shows a separate result page with the original amount,
+recipient and success, cancellation or verification failure. Pending requests
+remain pending. Return to Wire funds dismisses the result and retains the amount
+and connected identity for another wire. Results survive reload without consuming
+the signature response again. This demonstration never sends money.
 Requires corresponding Passli API651 and Code815 code-entry support. Existing
 Northstar walkthrough stays available; new walkthrough minisites are visual
 previews and refuse real connection. Run `node --test demo/test/*.test.mjs`
