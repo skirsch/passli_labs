@@ -432,3 +432,11 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: process/demo-suite-tests.tap (ignored); Demo0.1.33.
 - Results: 90 tests pass. Copy-only change; no new calling implementation.
 - Next steps: demo-only rollout on human request; retain worktree for acceptance.
+
+## 2026-10-28 - Bank Wire descriptive approval labels
+
+- What we did: renamed Bank Wire requirement, threshold explanation and receipt text to Mobile app, Face ID and Face ID+. Preserved immediate amount-input updates in both directions and unchanged server thresholds/numeric signed requirements; added the canonical generated label module to the demo static package.
+- Command / executable: node --test demo/test/*.test.mjs; local headless Chrome amount-input checks; git diff --check.
+- Outputs: 93 passing tests; ignored process/bank-approval-tests.log and process/bank-approval-preview.png; Demo0.1.34 package/lock/runtime synchronized; demo README v29.
+- Results: 999.99 requires Mobile app; 1000 and 5000 require Face ID; 5000.01 requires Face ID+; downward edits update immediately. Zero browser page errors. Signed amounts/backend enforcement unchanged; no production deployment or real account/hardware approval claimed.
+- Next steps: demo-only Coordinator publication on human request; retain this chat's worktree, branch and preview evidence through acceptance.
