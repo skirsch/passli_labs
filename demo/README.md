@@ -1,7 +1,7 @@
 # Northstar: complete site integration demo
 
-Version: 21
-Updated: 2026-10-26
+Version: 22
+Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
 The default service mode uses real Passli Direct authentication. Registration requests name, phone and email with Passli consent and authorized device delivery. Login and linking request no profile data. It uses a site-specific public subject and verifies the signed assertion
@@ -270,3 +270,13 @@ Requires corresponding Passli API651 and Code815 code-entry support. Existing
 Northstar walkthrough stays available; new walkthrough minisites are visual
 previews and refuse real connection. Run `node --test demo/test/*.test.mjs`
 from the repository root. Publication and phone acceptance are pending.
+
+### Connect callback correction (0.1.27)
+
+All three new minisites preserve the Direct adapter's exact 43-character opaque
+state. The suite selects its callback only when the saved pending state matches
+the current browser cookie; unrelated Northstar callbacks pass through normally.
+The previous `suite.` prefix violated the provider request contract and made
+Connect fail before authentication. Regression tests now use the real Direct
+adapter and cover TV, Schwab and wire, PKCE preservation, other-browser denial
+and callback replay. This is a demo-service-only update; API651/Code815 suffice.

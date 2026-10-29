@@ -12,7 +12,7 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
  const load=db.prepare('SELECT state FROM demo_suite WHERE id=?'),save=db.prepare('INSERT INTO demo_suite VALUES (?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state');
  const locks=new Set(),cookieName=(origin.startsWith('https:')?'__Host-':'')+'passli-demo-suite';
  return async(req,res,path)=>{
-  const url=new URL(req.url,origin),callback=path==='/auth/passli/callback'&&url.searchParams.get('state')?.startsWith('suite.');
+  const url=new URL(req.url,origin),callback=path==='/auth/passli/callback';
   const returning=path==='/'&&url.searchParams.has('signatureResult');
   if(!path.startsWith('/api/demo-suite/')&&!callback&&!returning)return false;
   const json=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));return true;};
@@ -20,6 +20,9 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
   let id=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith(cookieName+'='))?.slice(cookieName.length+1),state;
   db.prepare("DELETE FROM demo_suite WHERE json_extract(state,'$.expires') <= ?").run(now());
   const row=id&&load.get(id);if(row){try{state=JSON.parse(row.state);}catch{}}
+  // Share the registered callback with Northstar without changing the opaque
+  // Direct state. Only the exact pending suite state selects this handler.
+  if(callback&&(!state?.login||state.login.state!==url.searchParams.get('state')))return false;
   if(!state||state.expires<=now()){
    if(callback)return json(403,{error:'Demo login expired. Start again.'});
    if(db.prepare('SELECT COUNT(*) AS count FROM demo_suite').get().count>=1000)return json(429,{error:'Too many demo sessions. Try again later.'});
@@ -49,7 +52,7 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
    if(action==='login'){
     if(mode!=='real')throw Error('Real Passli login is available on the hosted demo. This is a local preview.');
     state.demo=body.demo;state.proof=null;state.receipt=null;
-    const proof={action:'login',expires:now()+60000},target=new URL(passli.begin(proof));proof.state='suite.'+proof.state;target.searchParams.set('state',proof.state);state.login=proof;persist();return json(200,{redirect:target.href});
+    const proof={action:'login',expires:now()+60000},target=passli.begin(proof);state.login=proof;persist();return json(200,{redirect:target});
    }
    if(!state.association||mode!=='real')throw Error('Connect your Passli identity before starting this demo.');
    if(await passli.status(state.association)!=='active'){state.association=null;state.proof=null;throw Error('Passli authorization ended. Connect again.');}

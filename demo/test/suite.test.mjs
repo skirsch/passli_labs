@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {createDemo} from '../server.mjs';
+import {createPassli} from '../passli.mjs';
 import {wireDetails} from '../suite.mjs';
 import {verifyDemoSignature} from '../signature.mjs';
 import {canonical} from '../unlink.mjs';
@@ -13,16 +14,40 @@ test('wire policy uses exact cent boundaries and rejects invalid amounts',()=>{
  assert.equal(wireDetails().json.amount,'1000.00');assert.match(wireDetails().text,/OpenAI.*000000000.*000123456789/);
 });
 
+for(const demo of ['tv','schwab','wire'])test(demo+' Connect preserves real Direct state, PKCE and exact cookie-bound callback routing',async t=>{
+ const origin='https://demo.passli.app';let completeCalls=0,parameters;
+ const provider={begin:createPassli({origin}).begin,complete:async proof=>{
+  completeCalls++;assert.equal(proof.state,parameters.get('state'));assert.equal(proof.nonce,parameters.get('nonce'));
+  assert.equal(createHash('sha256').update(proof.verifier).digest('base64url'),parameters.get('code_challenge'));
+  return {association:{subject:'site-identity'}};
+ }};
+ const server=createDemo({mode:'real',origin,provider});server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));const base='http://127.0.0.1:'+server.address().port;
+ const initial=await fetch(base+'/api/demo-suite/state'),cookie=initial.headers.get('set-cookie').split(';')[0],state=await initial.json();
+ const response=await fetch(base+'/api/demo-suite/login',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Demo-CSRF':state.csrf,'Content-Type':'application/json'},body:JSON.stringify({demo})});
+ assert.equal(response.status,200);const target=new URL((await response.json()).redirect);parameters=target.searchParams;
+ assert.equal(target.origin,'https://api.passli.app');assert.equal(target.pathname,'/direct/login');assert.equal(parameters.get('client_id'),'demo');
+ assert.equal(parameters.get('redirect_uri'),origin+'/auth/passli/callback');assert.equal(parameters.get('code_challenge_method'),'S256');
+ for(const key of ['state','nonce','code_challenge'])assert.match(parameters.get(key),/^[A-Za-z0-9_-]{43}$/);
+ const callback=base+'/auth/passli/callback?'+new URLSearchParams({state:parameters.get('state'),code:'test-code'});
+ await fetch(callback,{redirect:'manual'});assert.equal(completeCalls,0,'another browser cannot consume suite login');
+ const completed=await fetch(callback,{headers:{Cookie:cookie},redirect:'manual'});assert.equal(completed.headers.get('location'),'/'+demo+'/');assert.equal(completeCalls,1);
+ await fetch(callback,{headers:{Cookie:cookie},redirect:'manual'});assert.equal(completeCalls,1,'callback is single use');
+});
+
 test('suite pages, isolated login, CSRF, signed code request and one-use results',async t=>{
  let clock=Date.now(),count=0,created;
- const provider={begin:proof=>{proof.state='login-state';return 'https://api.passli.app/direct/login?state='+proof.state;},complete:async()=>({association:{subject:'site-identity'}}),status:async()=> 'active',createDemoApproval:async(_,details)=>{created=details;return {...details,requestId:'request-'+ ++count,approvalUrl:'https://passli.app/?signatureRequest=request-'+count,expiresAt:Math.floor(clock/1000)+600};},demoApprovalResult:async proof=>({fields:{...proof,requiredLoA:proof.requiredLoA,achievedLoA:proof.requiredLoA}})};
- const origin='http://localhost:18766',server=createDemo({mode:'real',origin,provider,now:()=>clock});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));const base='http://127.0.0.1:'+server.address().port;
+ const origin='https://demo.passli.app';let completeCalls=0;
+ const provider={begin:createPassli({origin}).begin,complete:async()=>{completeCalls++;return {association:{subject:'site-identity'}};},status:async()=> 'active',createDemoApproval:async(_,details)=>{created=details;return {...details,requestId:'request-'+ ++count,approvalUrl:'https://passli.app/?signatureRequest=request-'+count,expiresAt:Math.floor(clock/1000)+600};},demoApprovalResult:async proof=>({fields:{...proof,requiredLoA:proof.requiredLoA,achievedLoA:proof.requiredLoA}})};
+ const server=createDemo({mode:'real',origin,provider,now:()=>clock});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));const base='http://127.0.0.1:'+server.address().port;
  const home=await(await fetch(base+'/')).text();for(const path of ['northstar','tv','schwab','wire']){assert.match(home,new RegExp('href="/'+path+'/"'));assert.match(await(await fetch(base+'/'+path+'/')).text(),/Passli Demo Home/);}
  let response=await fetch(base+'/api/demo-suite/state'),cookie=response.headers.get('set-cookie').split(';')[0],state=await response.json();
  const post=async(action,extra={},headers={})=>{const response=await fetch(base+'/api/demo-suite/'+action,{method:'POST',headers:{Cookie:cookie,Origin:origin,'Content-Type':'application/json','X-Demo-CSRF':state.csrf,...headers},body:JSON.stringify({demo:'schwab',...extra})});return {response,body:await response.json()};};
  assert.equal((await post('start')).response.status,400);assert.equal((await post('login',{}, {'X-Demo-CSRF':'wrong'})).response.status,403);
- const login=await post('login');assert.match(login.body.redirect,/state=suite.login-state/);
- response=await fetch(base+'/auth/passli/callback?state=suite.login-state&code=code',{headers:{Cookie:cookie},redirect:'manual'});assert.equal(response.headers.get('location'),'/schwab/');
+ const login=await post('login'),loginState=new URL(login.body.redirect).searchParams.get('state');assert.match(loginState,/^[A-Za-z0-9_-]{43}$/);
+ await fetch(base+'/auth/passli/callback?state=unrelated&code=code',{headers:{Cookie:cookie},redirect:'manual'});assert.equal(completeCalls,0);
+ response=await fetch(base+'/auth/passli/callback?state='+loginState+'&code=code',{headers:{Cookie:cookie},redirect:'manual'});assert.equal(response.headers.get('location'),'/schwab/');assert.equal(completeCalls,1);
+ await fetch(base+'/auth/passli/callback?state='+loginState+'&code=code',{headers:{Cookie:cookie},redirect:'manual'});assert.equal(completeCalls,1);
  const started=await post('start');assert.match(started.body.code,/^\d{2}$/);assert.equal(created.requiredLoA,4);assert.equal(created.verificationCode,started.body.code);
  assert.equal((await post('start')).response.status,400);assert.equal((await post('result',{demo:'wire',requestId:'request-1'})).response.status,400);
  const completed=await post('result',{requestId:'request-1'});assert.equal(completed.body.verified,true);assert.equal((await post('result',{requestId:'request-1'})).response.status,400);

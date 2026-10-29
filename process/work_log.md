@@ -376,3 +376,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Commands: `node --test demo/test/*.test.mjs`; local in-memory browser preview on port 18886.
 - Outputs/results: 68 tests passed, including cent boundaries, invalid amounts, CSRF, callback, cross-demo/replayed results and signature tampering. Browser inspected selector, TV, Schwab, wire and return-home links; corrected inherited Northstar CSS sizing.
 - Next steps: Coordinator releases demo026 with API651/Code815. Code entry is on the Passli web approval page before the phone ceremony; native push code entry and bank agent lookup are not implemented. New walkthrough minisites are visual previews. No deployment/phone acceptance claimed. Retain worktree through acceptance.
+
+## 2026-10-28 - Fix Connect invalid Direct state (demo027)
+
+- What we did: removed suite. prefix from the Direct adapter state. Route suite callbacks by exact saved browser-cookie/pending-state match and let unrelated Northstar callbacks pass through. Preserve nonce/PKCE and consume callbacks once. Version demo027; no API/web/iOS changes.
+- Commands: `node --test demo/test/*.test.mjs`; generated three HTTP Connect requests using real createPassli.begin; WSL `node process/demo-direct-contract.mjs` checked actual Passli directRequest parser; anonymous GETs to live /direct/login for old/fixed synthetic TV requests.
+- Outputs/results: 71 tests passed. Provider parser accepts fixed TV/Schwab/wire requests and rejects original prefixed states. Live old request HTTP400/no redirect; fixed HTTP302 to https://passli.app. Added three real-adapter HTTP regressions including PKCE, missing-cookie denial, one-use callback; replaced original mocked login-state test which missed this contract.
+- Next steps: Coordinator demo-only rollout on human request; no deployment performed here. Live authenticated browser/phone completion remains unverified. Synthetic request/evidence files are ignored in this owning worktree.
