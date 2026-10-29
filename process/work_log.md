@@ -440,3 +440,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: 93 passing tests; ignored process/bank-approval-tests.log and process/bank-approval-preview.png; Demo0.1.34 package/lock/runtime synchronized; demo README v29.
 - Results: 999.99 requires Mobile app; 1000 and 5000 require Face ID; 5000.01 requires Face ID+; downward edits update immediately. Zero browser page errors. Signed amounts/backend enforcement unchanged; no production deployment or real account/hardware approval claimed.
 - Next steps: demo-only Coordinator publication on human request; retain this chat's worktree, branch and preview evidence through acceptance.
+
+## 2026-10-29 - Numbered approval level labels
+- What we did: adopted Approval level as the Bank Wire heading and 3 · Mobile app, 4 · Face ID, 5 · Face ID+ for live thresholds and verified receipts. Refreshed the generated five-level mapping from Passli and named the Northstar walkthrough's level-4 simulated approval. Numeric policies/claims and thresholds remain unchanged.
+- Command / executable: node --test demo/test/*.test.mjs; local Chrome wire amount changes across and back through both boundaries; git diff --check.
+- Outputs: 93 tests passed; Demo0.1.35 package/lock/runtime; README v30. Ignored process/bank-approval-numbered-tests.log and process/bank-approval-numbered-preview.png retained.
+- Results: short heading and exact numbered names render with zero page errors; 999.99 -> 3, 1000 and 5000 -> 4, 5000.01 -> 5, then downward edits update immediately. No production/hardware acceptance claimed.
+- Next steps: demo-only Coordinator publication on human request; retain owning worktree and evidence until acceptance.

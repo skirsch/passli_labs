@@ -1,7 +1,7 @@
 # Northstar: complete site integration demo
 
-Version: 29
-Updated: 2026-10-28
+Version: 30
+Updated: 2026-10-29
 
 Northstar is a fictional site with an actual server-side account/linking model.
 The default service mode uses real Passli Direct authentication. Registration requests name, phone and email with Passli consent and authorized device delivery. Login and linking request no profile data. It uses a site-specific public subject and verifies the signed assertion
@@ -269,8 +269,8 @@ Passli subject is the verified identity. Codes mitigate accidental approvals but
 can be relayed by a scammer. Declines record only local demo concerns.
 
 Wire defaults to $1,000 to OpenAI with fictional routing/account numbers. The
-server requests Mobile app approval below $1,000, Face ID for $1,000 through
-$5,000 inclusive, and Face ID+ above $5,000. The displayed Required approval
+server requests 3 · Mobile app below $1,000, 4 · Face ID for $1,000 through
+$5,000 inclusive, and 5 · Face ID+ above $5,000. The displayed Approval level
 updates immediately when the amount changes in either direction. Face ID+ adds
 an authorized Security PIN, Security Token or Trusted User after Face ID; Passli
 policy may require stronger approval. Internal request/proof values remain 3, 4

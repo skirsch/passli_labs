@@ -16,10 +16,10 @@ async function renderWire(state={authenticated:true,demo:'wire',csrf:'fixture'})
 }
 
 test('wire amount edits immediately show named approval at both exact thresholds, upward and downward',async()=>{
- const page=await renderWire();assert.equal(page.requirement.textContent,'Face ID');
- assert.match(page.root.html,/Required approval/);assert.match(page.root.html,/aria-live="polite"/);
- assert.match(page.root.html,/Below \$1,000: Mobile app/);assert.match(page.root.html,/Above \$5,000: Face ID\+/);
- for(const [amount,name]of [['0.01','Mobile app'],['999.99','Mobile app'],['1000','Face ID'],['5000.00','Face ID'],['5000.01','Face ID+'],['99999999.99','Face ID+'],['5000','Face ID'],['999.99','Mobile app']]){
+ const page=await renderWire();assert.equal(page.requirement.textContent,'4 · Face ID');
+ assert.match(page.root.html,/Approval level/);assert.match(page.root.html,/aria-live="polite"/);
+ assert.match(page.root.html,/Below \$1,000: 3 · Mobile app/);assert.match(page.root.html,/Above \$5,000: 5 · Face ID\+/);
+ for(const [amount,name]of [['0.01','3 · Mobile app'],['999.99','3 · Mobile app'],['1000','4 · Face ID'],['5000.00','4 · Face ID'],['5000.01','5 · Face ID+'],['99999999.99','5 · Face ID+'],['5000','4 · Face ID'],['999.99','3 · Mobile app']]){
   page.input(amount);assert.equal(page.requirement.textContent,name,amount);
   assert.equal(approvalLabel(wireDetails(amount).requiredLoA),name,'UI agrees with server policy');
  }
@@ -30,9 +30,9 @@ test('wire amount edits immediately show named approval at both exact thresholds
 
 test('wire approval result names required and verified approval without changing receipt numbers',async()=>{
  const receipt={requiredLoA:4,achievedLoA:5},page=await renderWire({authenticated:true,demo:'wire',receipt,wireResult:{amount:'1000.00',outcome:'approved',message:'Verified.'}});
- assert.match(page.root.html,/Required approval: Face ID · Verified approval: Face ID\+/);
+ assert.match(page.root.html,/Approval level: 4 · Face ID · Verified approval level: 5 · Face ID\+/);
  assert.doesNotMatch(page.root.html,/LoA/);assert.deepEqual(receipt,{requiredLoA:4,achievedLoA:5});
- assert.equal(approvalLabel(99),'Unsupported approval requirement');
+ assert.equal(approvalLabel(99),'Unsupported approval level');
 });
 
 test('demo serves the approval-label module required by the bank page',async t=>{
