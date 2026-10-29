@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 28
+Version: 29
 Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -269,8 +269,12 @@ Passli subject is the verified identity. Codes mitigate accidental approvals but
 can be relayed by a scammer. Declines record only local demo concerns.
 
 Wire defaults to $1,000 to OpenAI with fictional routing/account numbers. The
-server requests LoA 3 below $1,000, LoA 4 for $1,000 through $5,000 inclusive,
-and LoA 5 above $5,000; Passli policy may require stronger assurance. No money
+server requests Mobile app approval below $1,000, Face ID for $1,000 through
+$5,000 inclusive, and Face ID+ above $5,000. The displayed Required approval
+updates immediately when the amount changes in either direction. Face ID+ adds
+an authorized Security PIN, Security Token or Trusted User after Face ID; Passli
+policy may require stronger approval. Internal request/proof values remain 3, 4
+and 5, with the server computing the requirement from the exact amount. No money
 moves. `suite.mjs` owns cookie-isolated state and server-derived requests;
 `signature.mjs` independently verifies both signatures and exact request fields.
 After approval, `/wire/` shows a separate result page with the original amount,
