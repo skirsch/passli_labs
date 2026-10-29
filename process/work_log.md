@@ -423,3 +423,12 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: 90 passing tests; ignored process/schwab-calling-preview.png.
 - Results: browser confirms copy and Call Schwab button; identity approval behavior retained. Demo0.1.32.
 - Next steps: demo-only rollout through Coordinator when human requests it; secure voice implementation remains separate.
+
+
+## 2026-10-28 - Demo033 mobile and browser calling copy
+
+- What we did: explicitly state that planned Passli CallerID can make and receive secure calls in the mobile app or browser. Retained Call Schwab button and current-development notice.
+- Command / executable: node --test --test-reporter=tap demo/test/*.test.mjs.
+- Outputs: process/demo-suite-tests.tap (ignored); Demo0.1.33.
+- Results: 90 tests pass. Copy-only change; no new calling implementation.
+- Next steps: demo-only rollout on human request; retain worktree for acceptance.
