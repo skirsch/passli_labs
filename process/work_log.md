@@ -414,3 +414,12 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: process/demo-suite-tests.tap; process/wire-result-preview.png (ignored local evidence).
 - Results: 90 tests pass; browser confirms result reload and return to form with original amount. No real Passli approval or money movement exercised.
 - Next steps: demo-only rollout by Coordinator, then human phone acceptance.
+
+
+## 2026-10-28 - Demo032 Schwab secure calling explanation
+
+- What we did: explained conventional-call mutual authentication/MITM risks, digital channel identity binding and planned Passli CallerID calls to/from corporate centers; relabeled primary action Call Schwab. Clearly identifies existing signed-approval demo versus unimplemented live audio. Reviewed current Passli secure_voice_calling.md v3; did not modify that other chat-owned spec.
+- Command / executable: node --test --test-reporter=tap demo/test/*.test.mjs; local browser /schwab/.
+- Outputs: 90 passing tests; ignored process/schwab-calling-preview.png.
+- Results: browser confirms copy and Call Schwab button; identity approval behavior retained. Demo0.1.32.
+- Next steps: demo-only rollout through Coordinator when human requests it; secure voice implementation remains separate.

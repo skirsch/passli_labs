@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 26
+Version: 27
 Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -258,6 +258,10 @@ TV uses real Direct login, without streaming-service connectivity. The Schwab
 operator first connects the customer identity, then reads a random two-digit code
 from the agent screen. The customer enters it on the Passli approval webpage
 before the existing phone approval ceremony. The exact code is identity-signed.
+The Schwab page explains traditional-call man-in-the-middle risks and the planned
+Passli CallerID digital channel, with a Call Schwab button. The button retains the
+current Connect/identity-approval demonstration; it does not place an audio call.
+Secure calling remains a proposed design in the Passli secure voice calling spec.
 Native push code entry and a production bank agent lookup are not implemented.
 The Steve Kirsch field is a fictional display fixture; the connected pairwise
 Passli subject is the verified identity. Codes mitigate accidental approvals but
