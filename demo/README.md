@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 24
+Version: 25
 Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -325,3 +325,10 @@ phone approvals for that TV. The stable TV address stays the same. The next scan
 requires explicit LoA4 phone approval; selecting Remember this TV again restores
 scan-and-done for later logins when Passli policy permits. The existing forget
 endpoint remains compatible. Other demo accounts/devices are untouched.
+
+### Netflix signed-in header (0.1.30)
+
+Log out appears in the upper-right page header only while the TV is signed in.
+It uses the existing TV logout action and preserves remembered consent and the
+TV address. Reset Demo remains the separate control that clears remembered
+approvals. The old in-card Sign out of TV button is removed.

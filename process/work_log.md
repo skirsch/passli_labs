@@ -398,3 +398,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Commands: `node --test demo/test/*.test.mjs`; local preview browser check for placement, reset status and stable address.
 - Outputs/results: 86 tests passed. Lifecycle regression covers reset of active remembered login, CSRF denial, fresh LoA4 approval and subsequent LoA1 remembered scan; reset variant also rejects an in-flight stale approval.
 - Next steps: demo-only rollout by Coordinator on human request; demo029 supersedes ready demo028. No API/web/iOS change or deployment from this chat.
+
+## 2026-10-28 - Netflix signed-in upper-right logout (demo030)
+
+- What we did: moved TV logout from the content card into the upper-right page header, visible only when signed in. Header Log out uses the existing action/CSRF/busy handling; signed-out and pending states hide it. Reset Demo stays separate. TV address and remembered trust survive logout.
+- Commands: `node --check demo/public/tv.js`; `node --test demo/test/*.test.mjs`; isolated local simulated signed-in TV UI fixture on port18887.
+- Outputs/results: 86 tests passed; browser screenshot confirms upper-right placement, click returns to sign-in, hides the header action and preserves address. UI fixture used a synthetic provider, no real Passli account/phone; closed after verification. Ignored fixture and screenshot retained with owning worktree.
+- Next steps: demo-only rollout by Coordinator on human request; demo030 supersedes ready028/029. No API/web/iOS changes or deployment performed by this chat.
