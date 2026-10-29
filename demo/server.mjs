@@ -8,6 +8,7 @@ import {freshWorld,expire,publicState,act,random,authorizedAccount} from './mode
 import {version} from './version.mjs';
 import {createPassli} from './passli.mjs';
 import {createSuite} from './suite.mjs';
+import {createTv} from './tv.mjs';
 import {validatePiiRelease,validateDelivery,publicRelease} from './pii.mjs';
 
 const bodyCheckoutAction=text=>{try{return /^(checkout-|cart|purchase)/.test(JSON.parse(text).action)}catch{return false}};
@@ -48,8 +49,9 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
   sweep();const cleanup=setInterval(sweep,cleanupInterval);cleanup.unref();
   const view=world=>({...publicState(world),cart:cartView(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
   const files=new Map([['/northstar/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
-  for(const [path,file,type] of [['/','selector.html','text/html; charset=utf-8'],['/tv/','minisite.html','text/html; charset=utf-8'],['/schwab/','minisite.html','text/html; charset=utf-8'],['/wire/','minisite.html','text/html; charset=utf-8'],['/suite.js','suite.js','text/javascript; charset=utf-8'],['/suite.css','suite.css','text/css; charset=utf-8']])files.set(path,{body:readFileSync(resolve(here,'public',file)),type});
+  for(const [path,file,type] of [['/','selector.html','text/html; charset=utf-8'],['/tv/','tv.html','text/html; charset=utf-8'],['/schwab/','minisite.html','text/html; charset=utf-8'],['/wire/','minisite.html','text/html; charset=utf-8'],['/suite.js','suite.js','text/javascript; charset=utf-8'],['/suite.css','suite.css','text/css; charset=utf-8'],['/tv/phone/','tv-phone.html','text/html; charset=utf-8'],['/tv.js','tv.js','text/javascript; charset=utf-8'],['/tv-phone.js','tv-phone.js','text/javascript; charset=utf-8']])files.set(path,{body:readFileSync(resolve(here,'public',file)),type});
   const suite=createSuite({db,passli,mode,origin,now});
+  const tv=createTv({db,passli,mode,origin,now});
   for(const file of files.values())if(file.type.startsWith('text/html'))file.body=Buffer.from(file.body.toString().replaceAll('{{DEMO_VERSION}}',version));
   if(publicPrefix)files.get('/').body=files.get('/northstar/').body;
   let swept=0;const rates=new Map(),checkoutJobs=new Set();
@@ -58,6 +60,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const path=new URL(req.url,origin).pathname;
+    if(await tv.handle(req,res,path))return;
     if(await suite(req,res,path))return;
     if(['/northstar','/tv','/schwab','/wire'].includes(path)){res.writeHead(303,{Location:path+'/'});res.end();return;}
     if(mode==='real'&&path==='/api/checkout-release'){
@@ -314,6 +317,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
       persist();return json(error.status || 400,{state:view(world),message:error instanceof SyntaxError?'Invalid JSON.':error.message});
     }
   });
+  const close=server.close.bind(server);server.close=callback=>{tv.close();return close(callback);};
   server.once('close',()=>{clearInterval(cleanup);db.close();});return server;
 }
 if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {

@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 22
+Version: 23
 Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -17,10 +17,12 @@ without installing Passli. Simulation controls cannot authenticate the real demo
 
 ## Run locally
 
-Node.js 24.16 or later is required; there are no npm dependencies.
+Node.js 24.16 or later is required. Production has no npm dependencies; install
+the pinned development packages to run QR decoding tests or rebuild the encoder.
 
 ```sh
 cd demo
+npm ci
 npm test
 DEMO_MODE=walkthrough npm start
 ```
@@ -280,3 +282,36 @@ The previous `suite.` prefix violated the provider request contract and made
 Connect fail before authentication. Regression tests now use the real Direct
 adapter and cover TV, Schwab and wire, PKCE preservation, other-browser denial
 and callback replay. This is a demo-service-only update; API651/Code815 suffice.
+
+## TV QR login and remembered devices (0.1.28)
+
+The TV Sign in button always creates a fresh three-minute QR request; the TV
+browser's Passli login cannot sign it in. Scan with the phone's system camera.
+The phone page shows the TV name/address and opens the registered Direct flow
+at minimum LoA4 for explicit first-time approval. The TV receives completion by
+SSE. No Passli application is installed on the TV and the phone does not poll.
+
+Each browser profile gets a stable public TV address and a separate private
+HttpOnly device cookie. The address is not an IP address or a login secret.
+On first approval, the unchecked Remember this TV choice can grant 30 days of
+scan-triggered sign-in for that TV and the verified identity on that phone browser.
+Future scans still obtain a fresh Passli identity proof; higher account/site
+policy may require approval. Identity changes, expiry and revoked trust cannot
+reuse the previous consent. Sign out keeps the address/trust; Forget this TV
+pairing revokes all remembered phones and pending requests for that TV. The
+phone can also forget its own trust. Clearing TV cookies creates a new identity.
+This is a browser bearer-credential model, not a hardware-attested TV key.
+
+`tv.mjs` owns SQLite TV/phone/request records, policy-bound callbacks, atomic
+completion and SSE. `public/tv.js` and `public/tv-phone.js` render the two devices.
+`qr.mjs` uses the committed licensed `vendor/qr-encoder.mjs`; production needs no
+package installation. `npm run build:qr` regenerates that module and licenses
+from the pinned development dependencies. Include vendor/ in release archives.
+`test/tv.test.mjs` covers first/remembered logins, identity isolation, consent,
+expiry, revocation races, restart persistence, SSE/shutdown and independently
+decodes the generated QR.
+
+This is a demo-only rollout using the existing API651/Code815 Direct support.
+It does not add a native Passli QR parser: use the system camera and HTTPS phone
+page with existing Passli approval/app handoff. Physical-phone acceptance and
+production publication remain unverified until rollout and human testing.

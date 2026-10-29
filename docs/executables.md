@@ -1,7 +1,7 @@
 # Executable guide
 
-Version: 2
-Updated: 2026-10-24
+Version: 3
+Updated: 2026-10-28
 
 | Command | Purpose | Inputs | Outputs |
 | --- | --- | --- | --- |
@@ -25,3 +25,19 @@ cases. It is imported by `demo/passli.mjs`, not executed directly.
 `/schwab/`, and `/wire/`. Existing `cd demo && npm start` and environment inputs
 are unchanged. `node --test demo/test/suite.test.mjs` checks wire cent boundaries,
 CSRF, isolated Direct callbacks, request consumption and cryptographic tampering.
+
+## TV QR encoder and acceptance checks
+
+- `cd demo && npm ci`: install locked development-only packages for owner tests
+  and QR regeneration. Production uses committed JavaScript, with no npm install.
+- `cd demo && npm run build:qr`: `scripts/build-qr.mjs` bundles qrcode1.5.4 core
+  with esbuild into `vendor/qr-encoder.mjs` and copies both qrcode/dijkstrajs
+  license notices with LF. Regenerate only when changing the encoder/dependencies.
+- `node --test demo/test/tv.test.mjs`: HTTP two-device login, trust expiry and
+  revocation, identity/assurance checks, SQLite restart, SSE and independent QR
+  decoding. Default databases are in memory; the restart test deletes only its
+  own temporary SQLite files/directory. No real user or phone approval is sent.
+- Local visual preview: `node --input-type=module -e "import {createDemo} from
+  './demo/server.mjs';createDemo({origin:'http://127.0.0.1:18886'}).listen(18886,'127.0.0.1');"`
+  from the repo root. Keep configured origin and listening port identical; this
+  walkthrough preview displays QR/consent but cannot approve real identities.

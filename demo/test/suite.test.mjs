@@ -14,7 +14,7 @@ test('wire policy uses exact cent boundaries and rejects invalid amounts',()=>{
  assert.equal(wireDetails().json.amount,'1000.00');assert.match(wireDetails().text,/OpenAI.*000000000.*000123456789/);
 });
 
-for(const demo of ['tv','schwab','wire'])test(demo+' Connect preserves real Direct state, PKCE and exact cookie-bound callback routing',async t=>{
+for(const demo of ['schwab','wire'])test(demo+' Connect preserves real Direct state, PKCE and exact cookie-bound callback routing',async t=>{
  const origin='https://demo.passli.app';let completeCalls=0,parameters;
  const provider={begin:createPassli({origin}).begin,complete:async proof=>{
   completeCalls++;assert.equal(proof.state,parameters.get('state'));assert.equal(proof.nonce,parameters.get('nonce'));

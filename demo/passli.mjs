@@ -34,20 +34,21 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
   const redirect=origin+'/auth/passli/callback';
   return {
     begin(proof) {
+      if(proof.requiredLoA!==undefined&&![1,2,3,4,5].includes(proof.requiredLoA))throw Error('Invalid login assurance.');
       proof.state=random();proof.nonce=random();proof.verifier=random();
-      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':'1',request_pii:proof.action==='register'?'true':'false',...(proof.action==='register'?{pii_flow:'inline'}:{}),...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
+      const parameters=new URLSearchParams({client_id:clientId,redirect_uri:redirect,state:proof.state,nonce:proof.nonce,code_challenge:createHash('sha256').update(proof.verifier).digest('base64url'),code_challenge_method:'S256',required_loa:proof.action==='unlink'?'4':String(proof.requiredLoA??1),request_pii:proof.action==='register'?'true':'false',...(proof.action==='register'?{pii_flow:'inline'}:{}),...(proof.action==='unlink'?{operation:'unlink',unlink_subject:proof.subject,unlink_account:proof.accountId,unlink_binding:proof.bindingId}:{})});
       return issuer+'/direct/login?'+parameters;
     },
     async complete(proof,code) {
       const {token}=await request(issuer+'/direct/token',{method:'POST',body:{code,clientId,redirect,verifier:proof.verifier}});
       const jwks=await request(issuer+'/.well-known/jwks.json');
       if(proof.action==='unlink'){const fields=verifyUnlink(token,jwks,{clientId,nonce:proof.nonce,origin,subject:proof.subject,accountId:proof.accountId,bindingId:proof.bindingId});return {identity:fields.subject,unlinkVerified:true};}
-      const claims=verifyAssertion(token,jwks,{issuer,clientId,nonce:proof.nonce});
+      const claims=verifyAssertion(token,jwks,{issuer,clientId,nonce:proof.nonce,requiredLoA:proof.requiredLoA??1});
       const association={sessionId:claims.sid,clientId,subject:claims.sub,grantId:claims.gid};
       if(proof.action==='register'&&!validatePiiRelease(claims.piiRelease,origin)&&!claims.personalInformation)throw Error('Passli did not authorize personal information.');
       const status=await request(issuer+'/fedcm/session-status',{method:'POST',body:{...association,complete:true},timeout:3000});
       if(status.active!==true)throw Error('Passli authorization is no longer active.');
-      return {identity:claims.sub,association,...(proof.action==='register'?{personalInformation:claims.personalInformation,piiRelease:claims.piiRelease}:{})};
+      return {identity:claims.sub,association,achievedLoA:claims.achievedLoA,...(proof.action==='register'?{personalInformation:claims.personalInformation,piiRelease:claims.piiRelease}:{})};
     },
     async createCheckout(association,order) {
       const nonce=random(),created=await request(issuer+'/fedcm/signatures/create',{method:'POST',body:{...association,checkout:order,json:{amount:order.maximumAmount,currency:'USD'},requiredLoA:1,nonce}});

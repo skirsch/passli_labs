@@ -9,6 +9,15 @@ const jwks={keys:[{...createPublicKey(privateKey).export({format:'jwk'}),kid:'pa
 const base={iss:'https://api.passli.app',aud:'demo',sub:Buffer.alloc(32,1).toString('base64url'),nonce:'expected-nonce',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+60,requiredLoA:1,achievedLoA:2,gid:'primary.'+'a'.repeat(88)+'.'+'b'.repeat(43),sid:'primary.'+'c'.repeat(88)+'.'+'d'.repeat(43)};
 function token(claims={},header={}) {const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url'),data=encode({alg:'EdDSA',kid:'passli-fedcm-v1',typ:'JWT',...header})+'.'+encode({...base,...claims});return data+'.'+sign(null,Buffer.from(data),privateKey).toString('base64url');}
 const options={issuer:base.iss,clientId:'demo',nonce:base.nonce};
+
+test('TV phone login requests and verifies its minimum assurance without weakening defaults',async()=>{
+ const proof={action:'login',requiredLoA:4};let level=1;
+ const provider=createPassli({origin:'https://demo.passli.app',request:async url=>url.endsWith('/direct/token')?{token:token({nonce:proof.nonce,requiredLoA:level,achievedLoA:level})}:url.endsWith('/jwks.json')?jwks:{active:true}});
+ assert.equal(new URL(provider.begin(proof)).searchParams.get('required_loa'),'4');
+ await assert.rejects(provider.complete(proof,'code'),/assurance/);level=4;assert.equal((await provider.complete(proof,'code')).achievedLoA,4);
+ for(const requiredLoA of [0,6,'4',null])assert.throws(()=>provider.begin({requiredLoA}));
+ assert.equal(new URL(provider.begin({action:'login'})).searchParams.get('required_loa'),'1');
+});
 test('only registration requests personal information in the Passli consent UI',()=>{
  const provider=createPassli({origin:'https://demo.passli.app'});
  for(const action of ['login','link','register']){const url=new URL(provider.begin({action}));assert.equal(url.searchParams.get('request_pii'),action==='register'?'true':'false');assert.equal(url.searchParams.get('pii_flow'),action==='register'?'inline':null);}

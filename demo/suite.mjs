@@ -47,7 +47,7 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
    if(req.method!=='POST')return json(405,{error:'Method not allowed.'});
    if(req.headers.origin!==origin||req.headers['x-demo-csrf']!==state.csrf)return json(403,{error:'Demo state changed. Reload before continuing.'});
    let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>4096)throw Error('Request too large.');}const body=JSON.parse(raw);
-   if(!['tv','schwab','wire'].includes(body.demo))throw Error('Choose a demo.');
+   if(!['schwab','wire'].includes(body.demo))throw Error('Choose a demo.');
    const action=path.slice('/api/demo-suite/'.length);
    if(action==='login'){
     if(mode!=='real')throw Error('Real Passli login is available on the hosted demo. This is a local preview.');
@@ -59,7 +59,6 @@ export function createSuite({db,passli,mode,origin,now=Date.now}){
    if(action==='start'){
     if(state.proof)throw Error('Finish or cancel your pending demo first.');
     state.demo=body.demo;state.receipt=null;
-    if(body.demo==='tv'){state.message='TV signed in with your verified Passli identity.';persist();return json(200,{done:true});}
     const details=body.demo==='wire'?wireDetails(body.amount):{text:'Schwab mutual authentication demonstration. Customer: Steve Kirsch. Verify my identity for this call only. This does not authorize a wire, payment or account change.',requiredLoA:4,verificationCode:String(randomInt(0,100)).padStart(2,'0')};
     state.proof=await passli.createDemoApproval(state.association,details);persist();return json(200,body.demo==='schwab'?{code:state.proof.verificationCode,approvalUrl:state.proof.approvalUrl+'&signatureReturn=demo'}:{redirect:state.proof.approvalUrl+'&signatureReturn=demo'});
    }
