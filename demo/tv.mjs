@@ -23,7 +23,7 @@ export function createTv({db,passli,origin,mode,now=Date.now}){
  function phoneFor(req,res){let token=cookie(req,phoneCookie),phone=valid(token)?get('demo_tv_phones',hash(token)):null;if(!phone||phone.expires<=now()){limit('demo_tv_phones');token=random();phone={key:hash(token),csrf:random(),trust:{},expires:now()+trustLife};setCookie(res,phoneCookie,token,trustLife/1000);savePhone(phone);}return phone;}
  function pending(ticket){if(!valid(ticket))throw Error('Invalid TV QR code.');const item=get('demo_tv_requests',ticket),tv=item&&tvById(item.device);if(!item||!tv||item.status!=='pending'||item.expires<=now()||tv.expires<=now()||tv.requestId!==item.id||tv.generation!==item.generation)throw Error('This TV login expired, was cancelled, or was replaced. Start a new login on the TV.');return {item,tv};}
  const remembered=(phone,tv)=>{const trust=phone.trust[tv.id];return trust&&trust.expires>now()&&trust.generation===tv.generation?trust:null;};
- function view(tv){const item=tv.requestId&&get('demo_tv_requests',tv.requestId),active=item?.status==='pending'&&item.expires>now()&&item.generation===tv.generation;return {csrf:tv.csrf,mode,name:tv.name,address:'TV-'+tv.id,authenticated:!!tv.session&&tv.session.expires>now(),pending:!!active,...(active?{ticket:item.id,expiresAt:item.expires,qrUrl:'/api/tv/qr?ticket='+item.id}:{}),achievedLoA:tv.session?.achievedLoA,remembered:tv.session?.remembered===true};}
+ function view(tv){const item=tv.requestId&&get('demo_tv_requests',tv.requestId),active=item?.status==='pending'&&item.expires>now()&&item.generation===tv.generation;return {csrf:tv.csrf,mode,name:tv.name,address:'TV-'+tv.id,message:tv.message||'',authenticated:!!tv.session&&tv.session.expires>now(),pending:!!active,...(active?{ticket:item.id,expiresAt:item.expires,qrUrl:'/api/tv/qr?ticket='+item.id}:{}),achievedLoA:tv.session?.achievedLoA,remembered:tv.session?.remembered===true};}
  const listeners=new Map(),locks=new Set();
  const publish=tv=>{for(const res of listeners.get(tv.id)||[])res.write('data: '+JSON.stringify(view(tv))+'\n\n');};
  const current=(ticket,phoneKey)=>{const result=pending(ticket),phone=get('demo_tv_phones',phoneKey);if(!phone||phone.expires<=now())throw Error('Phone session expired. Scan again.');return {...result,phone};};
@@ -109,11 +109,11 @@ export function createTv({db,passli,origin,mode,now=Date.now}){
     lock='tv:'+tv.key;if(locks.has(lock))return json(409,{error:'This TV request is being checked.'});locks.add(lock);const body=await readBody(req);
     if(path==='/api/tv/start'){
      if(tv.requestId){const old=get('demo_tv_requests',tv.requestId);if(old){old.status='cancelled';saveRequest(old);}}
-     limit('demo_tv_requests');tv.name=typeof body.name==='string'&&body.name.trim()?body.name.trim().slice(0,60):tv.name;tv.session=null;
+     limit('demo_tv_requests');tv.name=typeof body.name==='string'&&body.name.trim()?body.name.trim().slice(0,60):tv.name;tv.session=null;tv.message='';
      const item={id:random(),device:tv.id,generation:tv.generation,status:'pending',expires:now()+requestLife};saveRequest(item);tv.requestId=item.id;saveTv(tv);publish(tv);return json(200,view(tv));
     }
-    if(['/api/tv/logout','/api/tv/forget','/api/tv/cancel'].includes(path)){
-     if(tv.requestId){const item=get('demo_tv_requests',tv.requestId);if(item){item.status='cancelled';saveRequest(item);}}tv.requestId=null;tv.session=null;if(path.endsWith('/forget'))tv.generation++;saveTv(tv);publish(tv);return json(200,view(tv));
+    if(['/api/tv/logout','/api/tv/forget','/api/tv/reset','/api/tv/cancel'].includes(path)){
+     if(tv.requestId){const item=get('demo_tv_requests',tv.requestId);if(item){item.status='cancelled';saveRequest(item);}}tv.requestId=null;tv.session=null;if(path.endsWith('/forget')||path.endsWith('/reset'))tv.generation++;tv.message=path.endsWith('/reset')?'Demo reset. The next scan requires explicit approval on your phone.':'';saveTv(tv);publish(tv);return json(200,view(tv));
     }
     return json(404,{error:'Unknown TV action.'});
    }catch(error){return json(400,{error:error.message});}finally{if(lock)locks.delete(lock);}

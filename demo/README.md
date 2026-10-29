@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 23
+Version: 24
 Updated: 2026-10-28
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -297,8 +297,8 @@ On first approval, the unchecked Remember this TV choice can grant 30 days of
 scan-triggered sign-in for that TV and the verified identity on that phone browser.
 Future scans still obtain a fresh Passli identity proof; higher account/site
 policy may require approval. Identity changes, expiry and revoked trust cannot
-reuse the previous consent. Sign out keeps the address/trust; Forget this TV
-pairing revokes all remembered phones and pending requests for that TV. The
+reuse the previous consent. Sign out keeps the address/trust; Reset Demo
+revokes all remembered phones and pending requests for that TV. The
 phone can also forget its own trust. Clearing TV cookies creates a new identity.
 This is a browser bearer-credential model, not a hardware-attested TV key.
 
@@ -315,3 +315,13 @@ This is a demo-only rollout using the existing API651/Code815 Direct support.
 It does not add a native Passli QR parser: use the system camera and HTTPS phone
 page with existing Passli approval/app handoff. Physical-phone acceptance and
 production publication remain unverified until rollout and human testing.
+
+### Reset Demo (0.1.29)
+
+Reset Demo sits directly below the TV Passli sign-in button and remains available
+while waiting or signed in. It clears the current TV session, cancels its pending
+QR/phone approval and advances its trust generation, invalidating all remembered
+phone approvals for that TV. The stable TV address stays the same. The next scan
+requires explicit LoA4 phone approval; selecting Remember this TV again restores
+scan-and-done for later logins when Passli policy permits. The existing forget
+endpoint remains compatible. Other demo accounts/devices are untouched.

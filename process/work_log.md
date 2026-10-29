@@ -391,3 +391,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs/results: 84 tests passed. New tests cover cross-TV/cookie/CSRF denial, LoA enforcement, expired/replayed/replaced requests, identity switch, opt-in trust expiry, revocation race, SQLite restart, SSE completion/shutdown and independent QR decoding. Browser verified TV button creates QR instead of redirecting, phone confirmation shows matching address and unchecked consent. Local preview initially used default18766 origin while serving18886; corrected preview configuration before browser acceptance.
 - Release inputs: committed QR core encoder20388 bytes plus qrcode/dijkstrajs license notices; pinned dev-only build/test packages and lockfile. Production remains dependency-free. Include new tv/qr/vendor source and public TV/phone assets in source archive.
 - Next steps: Coordinator demo-only rollout on human request; API651/Code815 suffice, no API/web/iOS rebuild. Physical-phone app handoff and live edge SSE acceptance remain unverified. Retain worktree, small dev dependencies and ignored screenshot/test evidence through human acceptance.
+
+## 2026-10-28 - Reset Demo below TV Passli sign-in (demo029)
+
+- What we did: added Reset Demo directly below TV sign-in, also available pending/signed-in. Reset clears that TV session, cancels its current QR/approval and invalidates remembered consent by advancing generation; preserves the TV address. Next scan requires explicit phone approval; re-remembering restores scan-and-done under normal policy. Existing forget endpoint remains compatible.
+- Commands: `node --test demo/test/*.test.mjs`; local preview browser check for placement, reset status and stable address.
+- Outputs/results: 86 tests passed. Lifecycle regression covers reset of active remembered login, CSRF denial, fresh LoA4 approval and subsequent LoA1 remembered scan; reset variant also rejects an in-flight stale approval.
+- Next steps: demo-only rollout by Coordinator on human request; demo029 supersedes ready demo028. No API/web/iOS change or deployment from this chat.

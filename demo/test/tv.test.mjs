@@ -66,11 +66,20 @@ test('expiry, replacement and cancellation invalidate QR tickets and pending cal
  const cancelled=await f.start(),pending=await f.approve(cancelled.ticket);await f.tv.request('/api/tv/cancel',{});await pending.finish();assert.equal((await f.tv.request('/api/tv/state')).data.authenticated,false);
 });
 
-test('forgetting from TV revokes trust and rejects approval already in flight',async t=>{
+for(const revoke of ['forget','reset'])test(revoke+' from TV revokes trust and rejects approval already in flight',async t=>{
  const f=await fixture(t),first=await f.start();await (await f.approve(first.ticket,{remember:true})).finish();await f.tv.request('/api/tv/logout',{});
  const next=await f.start(),approval=await f.approve(next.ticket,{automatic:true});let release;f.waitComplete(new Promise(resolve=>release=resolve));
- let entered;const started=new Promise(resolve=>entered=resolve);f.onComplete(entered);const completing=approval.finish();await started;await f.tv.request('/api/tv/forget',{});release();await completing;
+ let entered;const started=new Promise(resolve=>entered=resolve);f.onComplete(entered);const completing=approval.finish();await started;await f.tv.request('/api/tv/'+revoke,{});release();await completing;
  assert.equal((await f.tv.request('/api/tv/state')).data.authenticated,false);f.waitComplete(null);const after=await f.start();assert.equal(after.address,first.address);assert.equal((await f.scan(after.ticket)).remembered,false);
+});
+
+test('Reset Demo returns a remembered TV to explicit phone approval, then remembered scans work again',async t=>{
+ const f=await fixture(t),first=await f.start();await (await f.approve(first.ticket,{remember:true})).finish();assert.equal((await f.tv.request('/api/tv/state')).data.remembered,true);
+ assert.equal((await f.tv.request('/api/tv/reset',{},{Origin:'https://attacker.test'})).response.status,403);assert.equal((await f.tv.request('/api/tv/state')).data.authenticated,true);
+ const reset=await f.tv.request('/api/tv/reset',{});assert.equal(reset.response.status,200);assert.equal(reset.data.address,first.address);assert.equal(reset.data.authenticated,false);assert.equal(reset.data.pending,false);assert.match(reset.data.message,/explicit approval/);
+ const next=await f.start();assert.equal((await f.scan(next.ticket)).remembered,false);assert.equal((await f.phone.request('/api/tv/phone/auto',{ticket:next.ticket})).response.status,400);
+ const explicit=await f.approve(next.ticket,{remember:true});assert.equal(explicit.parameters.get('required_loa'),'4');await explicit.finish();await f.tv.request('/api/tv/logout',{});
+ const later=await f.start();assert.equal((await f.scan(later.ticket)).remembered,true);const auto=await f.approve(later.ticket,{automatic:true});assert.equal(auto.parameters.get('required_loa'),'1');await auto.finish();assert.equal((await f.tv.request('/api/tv/state')).data.authenticated,true);
 });
 
 test('remembering is opt-in, expires after 30 days, and can be removed by the phone',async t=>{
