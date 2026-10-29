@@ -369,3 +369,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: demo/checkout.mjs, demo/public/app.js, tests and demo/README.md. Branch codex/checkout-contact-fields; starting commit 76fde4b1b1512e82192651ed39877e0d74740df2 in C:/Users/stk/.codex/worktrees/checkout-contact-fields/passli_labs.
 - Results: all 65 tests passed. Companion Passli API611/app758 implementation on codex/checkout-fields. No deployment, push, main integration or physical-device acceptance.
 - Next steps: coordinate with Passli API/web release approval before Demo025 activation; validate real browser/phone checkout.
+
+## 2026-10-28 - Demo selector and signed call/wire demonstrations (0.1.26)
+
+- What we did: four-card root selector; Northstar at /northstar/; Netflix-inspired Direct login; Schwab Steve Kirsch fixture with agent spoken-code ceremony; Wells Fargo-inspired fictional OpenAI wire with server-derived LoA 3/4/5 thresholds. Added independent identity-signature/provider-attestation verification and isolated suite cookies/CSRF/expiry.
+- Commands: `node --test demo/test/*.test.mjs`; local in-memory browser preview on port 18886.
+- Outputs/results: 68 tests passed, including cent boundaries, invalid amounts, CSRF, callback, cross-demo/replayed results and signature tampering. Browser inspected selector, TV, Schwab, wire and return-home links; corrected inherited Northstar CSS sizing.
+- Next steps: Coordinator releases demo026 with API651/Code815. Code entry is on the Passli web approval page before the phone ceremony; native push code entry and bank agent lookup are not implemented. New walkthrough minisites are visual previews. No deployment/phone acceptance claimed. Retain worktree through acceptance.

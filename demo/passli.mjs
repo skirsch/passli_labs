@@ -1,5 +1,6 @@
 import {verifyCheckout} from './checkout.mjs';
 import {verifyUnlink} from './unlink.mjs';
+import {verifyDemoSignature} from './signature.mjs';
 import https from 'node:https';
 import {createHash,createPublicKey,verify} from 'node:crypto';
 import {random} from './model.mjs';
@@ -52,6 +53,16 @@ export function createPassli({origin,issuer='https://api.passli.app',clientId='d
       const nonce=random(),created=await request(issuer+'/fedcm/signatures/create',{method:'POST',body:{...association,checkout:order,json:{amount:order.maximumAmount,currency:'USD'},requiredLoA:1,nonce}});
       if(typeof created.requestId!=='string'||created.approvalUrl!=='https://passli.app/?signatureRequest='+created.requestId||typeof created.resultSecret!=='string'||!Number.isInteger(created.requestedAt)||created.expiresAt!==created.requestedAt+600)throw Error('Invalid checkout response.');
       return {...created,nonce,subject:association.subject,origin,order};
+    },
+    async createDemoApproval(association,details) {
+      const nonce=random(),created=await request(issuer+'/fedcm/signatures/create',{method:'POST',body:{...association,...details,nonce}});
+      if(typeof created.requestId!=='string'||created.approvalUrl!=='https://passli.app/?signatureRequest='+created.requestId||typeof created.resultSecret!=='string'||!Number.isInteger(created.requestedAt)||created.expiresAt!==created.requestedAt+600)throw Error('Invalid demo approval response.');
+      return {...created,...details,nonce,subject:association.subject,origin};
+    },
+    async demoApprovalResult(proof) {
+      const result=await request(issuer+'/fedcm/signatures/result',{method:'POST',body:{requestId:proof.requestId,resultSecret:proof.resultSecret}});
+      if(result.pending||result.cancelled)return result;
+      return {fields:verifyDemoSignature(result.result,await request(issuer+'/.well-known/jwks.json'),proof)};
     },
     async checkoutResult(proof) {
       const result=await request(issuer+'/fedcm/signatures/result',{method:'POST',body:{requestId:proof.requestId,resultSecret:proof.resultSecret}});

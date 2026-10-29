@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {freshWorld,expire,publicState,act,random,authorizedAccount} from './model.mjs';
 import {version} from './version.mjs';
 import {createPassli} from './passli.mjs';
+import {createSuite} from './suite.mjs';
 import {validatePiiRelease,validateDelivery,publicRelease} from './pii.mjs';
 
 const bodyCheckoutAction=text=>{try{return /^(checkout-|cart|purchase)/.test(JSON.parse(text).action)}catch{return false}};
@@ -46,15 +47,19 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
   };
   sweep();const cleanup=setInterval(sweep,cleanupInterval);cleanup.unref();
   const view=world=>({...publicState(world),cart:cartView(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
-  const files=new Map([['/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
+  const files=new Map([['/northstar/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
+  for(const [path,file,type] of [['/','selector.html','text/html; charset=utf-8'],['/tv/','minisite.html','text/html; charset=utf-8'],['/schwab/','minisite.html','text/html; charset=utf-8'],['/wire/','minisite.html','text/html; charset=utf-8'],['/suite.js','suite.js','text/javascript; charset=utf-8'],['/suite.css','suite.css','text/css; charset=utf-8']])files.set(path,{body:readFileSync(resolve(here,'public',file)),type});
+  const suite=createSuite({db,passli,mode,origin,now});
   for(const file of files.values())if(file.type.startsWith('text/html'))file.body=Buffer.from(file.body.toString().replaceAll('{{DEMO_VERSION}}',version));
-  if(publicPrefix)files.get('/').body=Buffer.from(files.get('/').body.toString().replace('href="/"',`href="${publicPrefix}/"`));
+  if(publicPrefix)files.get('/').body=files.get('/northstar/').body;
   let swept=0;const rates=new Map(),checkoutJobs=new Set();
   const server=http.createServer(async(req,res)=>{
     const json=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const path=new URL(req.url,origin).pathname;
+    if(await suite(req,res,path))return;
+    if(['/northstar','/tv','/schwab','/wire'].includes(path)){res.writeHead(303,{Location:path+'/'});res.end();return;}
     if(mode==='real'&&path==='/api/checkout-release'){
       let visitorId,ownsCheckoutJob=false;
       try{
@@ -107,7 +112,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     }
     if(mode==='real'&&path==='/walkthrough') {res.writeHead(308,{Location:'/walkthrough/'});res.end();return;}
     if (path==='/health' && req.method==='GET') return json(200,{ok:true,version,mode});
-    if (files.has(path) && ['GET','HEAD'].includes(req.method)) {const file=files.get(path);res.writeHead(200,{'Content-Type':file.type});res.end(req.method==='HEAD'?undefined:file.body);return;}
+    if (files.has(path) && ['GET','HEAD'].includes(req.method)) {const file=files.get(path==='/'&&new URL(req.url,origin).searchParams.has('signatureResult')?'/northstar/':path);res.writeHead(200,{'Content-Type':file.type});res.end(req.method==='HEAD'?undefined:file.body);return;}
     if (!['/api/state','/api/action','/api/private','/auth/passli/callback','/auth/passli/pii-return'].includes(path)) return json(404,{error:'Not found'});
     if (req.method!==(path==='/api/action'?'POST':'GET')) return json(405,{error:'Method not allowed'});
     const cookies=Object.fromEntries((req.headers.cookie || '').split(';').map(s=>s.trim().split('=')));
@@ -153,11 +158,11 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
         else world.message='Personal information was not received. Please try again.';
         persist();
       }
-      res.writeHead(303,{Location:'/'});res.end();return;
+      res.writeHead(303,{Location:publicPrefix+'/northstar/'});res.end();return;
     }
     if (path==='/auth/passli/callback') {
       const url=new URL(req.url,origin),proof=world.pending;
-      const redirect=()=>{res.writeHead(303,{Location:'/'});res.end();};
+      const redirect=()=>{res.writeHead(303,{Location:publicPrefix+'/northstar/'});res.end();};
       if(mode==='real'&&url.searchParams.has('error')) {
         // Cancellation returns no authority. It must still navigate home after
         // the approval deadline, cleanup, or an already consumed callback.

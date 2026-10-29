@@ -1,6 +1,6 @@
 # Northstar: complete site integration demo
 
-Version: 20
+Version: 21
 Updated: 2026-10-26
 
 Northstar is a fictional site with an actual server-side account/linking model.
@@ -245,3 +245,28 @@ Checkout-specific provider authority never creates a merchant identity link.
 ## Release status
 
 Demo022 is deployed with the single Link/Unlink action; see `docs/releases/demo022_single_link_button.md`. The full checkout candidate is Demo023, paired with API609/app753, and remains subject to exact production approval. Record and source checkpoints do not imply deployment.
+
+## Four-demo home (0.1.26)
+
+The origin root is a four-card selector. Northstar is at `/northstar/`, the
+Netflix-inspired TV login is `/tv/`, Schwab mutual authentication is `/schwab/`,
+and Wells Fargo-inspired Bank Wire is `/wire/`. Each has Passli Demo Home navigation.
+
+TV uses real Direct login, without streaming-service connectivity. The Schwab
+operator first connects the customer identity, then reads a random two-digit code
+from the agent screen. The customer enters it on the Passli approval webpage
+before the existing phone approval ceremony. The exact code is identity-signed.
+Native push code entry and a production bank agent lookup are not implemented.
+The Steve Kirsch field is a fictional display fixture; the connected pairwise
+Passli subject is the verified identity. Codes mitigate accidental approvals but
+can be relayed by a scammer. Declines record only local demo concerns.
+
+Wire defaults to $1,000 to OpenAI with fictional routing/account numbers. The
+server requests LoA 3 below $1,000, LoA 4 for $1,000 through $5,000 inclusive,
+and LoA 5 above $5,000; Passli policy may require stronger assurance. No money
+moves. `suite.mjs` owns cookie-isolated state and server-derived requests;
+`signature.mjs` independently verifies both signatures and exact request fields.
+Requires corresponding Passli API651 and Code815 code-entry support. Existing
+Northstar walkthrough stays available; new walkthrough minisites are visual
+previews and refuse real connection. Run `node --test demo/test/*.test.mjs`
+from the repository root. Publication and phone acceptance are pending.

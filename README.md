@@ -7,7 +7,9 @@ Public integration documentation and official icon assets for **Login with Passl
 **[Guided walkthrough](https://demo.passli.app/walkthrough/)** ·
 **[Demo implementation](demo/README.md)**
 
-The live demo is **Northstar**, a fictional site using real Passli Direct login.
+The live demo home selects **Northstar**, **TV app login**, **Schwab mutual auth**,
+and **Bank Wire**. Each minisite links back to Passli Demo Home. Northstar is a
+fictional site using real Passli Direct login.
 Explore first-use account choice, explicit existing-account linking, new-account
 creation, returning login, account settings and unlinking. The site's backend
 verifies Passli assertions and current authorization; Northstar's own passwords

@@ -18,3 +18,10 @@ See the [demo implementation notes](../demo/README.md) for exact configuration.
 `demo/unlink.mjs` is the dependency-free backend verifier for operation-bound
 LoA 4 unlink proofs; `npm test` includes both-signature and exact-binding denial
 cases. It is imported by `demo/passli.mjs`, not executed directly.
+
+## Demo suite
+
+`demo/server.mjs` now serves the four-demo selector plus `/northstar/`, `/tv/`,
+`/schwab/`, and `/wire/`. Existing `cd demo && npm start` and environment inputs
+are unchanged. `node --test demo/test/suite.test.mjs` checks wire cent boundaries,
+CSRF, isolated Direct callbacks, request consumption and cryptographic tampering.
