@@ -62,6 +62,11 @@ after a user click; normal site login remains available alongside it.
 
 ## Downloads and contributions
 
+[Download the Passli browser extension](downloads/extension/README.md) and follow
+the unpacked installation instructions to try it before store publication.
+Updates are installed manually.
+
+
 Use the files under [assets/icons](assets/icons), or pin an integration to a
 reviewed commit. Keep filenames and asset URLs under your own deployment's
 control instead of depending on a moving GitHub branch at runtime.

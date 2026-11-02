@@ -447,3 +447,11 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: 93 tests passed; Demo0.1.35 package/lock/runtime; README v30. Ignored process/bank-approval-numbered-tests.log and process/bank-approval-numbered-preview.png retained.
 - Results: short heading and exact numbered names render with zero page errors; 999.99 -> 3, 1000 and 5000 -> 4, 5000.01 -> 5, then downward edits update immediately. No production/hardware acceptance claimed.
 - Next steps: demo-only Coordinator publication on human request; retain owning worktree and evidence until acceptance.
+
+## 2026-11-02 - Pre-store extension download
+
+- What we did: copied extension209 final runtime ZIP from Passli source eb8e6cf3; linked download/install/update guide from root README.
+- Command / executable: `python scripts/deploy/package-extension.py --labs ../passli_labs-extension-download` from Passli owning checkout.
+- Outputs: `downloads/extension/passli-extension-0.1.209.zip`, `.sha256`, `release.json`, `README.md`.
+- Results: ZIP CRC, embedded version, checksum and absence of private demo config/default signer verified; 126 extension tests and syntax checks passed upstream. SHA-256: 85aa281a4d2b5b692588db55e4c7014fa816dd36758a652df96442306bbdd2da.
+- Next steps: manual unpacked browser installation acceptance; future extension releases use the upstream packager. No demo server deployment needed.
