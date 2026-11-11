@@ -465,3 +465,7 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Fixed Passli-created demo accounts having no fictional email login after unlinking. The page now shows their demo-only address; LoA4/two-signature unlink remains unchanged.
 - Fixed Save note reading stale text after a busy-state render; preserve dirty drafts across state refreshes. Extended HTTP first-create/unlink/local-return/relink and UI note-edit regression tests.
 - Demo037; run node --test demo/test/*.test.mjs. These are software checks, not deployment or physical-phone acceptance.
+
+## 2026-11-11 — Three-key Northstar
+
+Synchronized reviewed RP runtime from the owning Passli worktree; three-key registration and adaptive login, all-three link/unlink. Retire authorized demo two-key links while preserving local accounts, notes and password access. Seven native integration tests passed across Ed25519 and all ML-DSA suites, restart, cancellation and identity uniqueness. Version0.1.38; deployment pending.

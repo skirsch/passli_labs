@@ -36,7 +36,7 @@ export function createNativeRPHttp({operations,origin,cookieKey,localSessionFor}
      if(req.method==='GET'&&ticket&&!action){
       const pending=operations.handoff(ticket);const stage=url.searchParams.get('wait');
       if(stage&&pending.stage===stage)await wait(ticket,stage,req);
-      if(!res.destroyed){const current=operations.handoff(ticket);json(res,200,{origin,stage:current.stage,expires:current.expires,transaction:current.transaction,requestedOperation:current.requestedOperation,userIdentifier:current.userIdentifier,requestedAlgorithm:current.requestedAlgorithm??null});}return true;
+      if(!res.destroyed){const current=operations.handoff(ticket);json(res,200,{origin,stage:current.stage,expires:current.expires,transaction:current.transaction,requestedOperation:current.requestedOperation,userIdentifier:current.userIdentifier,requestedKeyCount:current.requestedKeyCount??2,requestedAlgorithm:current.requestedAlgorithm??null});}return true;
      }
      if(req.method!=='POST'){json(res,405,{error:'METHOD_NOT_ALLOWED'});return true;}
      const input=await body(req);

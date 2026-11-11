@@ -1,3 +1,4 @@
+import {validateSignerPolicy,validateIndependentProvider,validateSignerMinimum} from './signer-policy.mjs';
 import {accountID,canonical,decode64,fields,reject,revision,site,text,nextRevision} from './encoding.mjs';
 import {validateAlgorithmBinding,validateAlgorithmPolicy} from './algorithm-policy.mjs';
 import {pairingSchemas} from './device-key-schema.mjs';
@@ -49,13 +50,15 @@ export function validateAssurance(a){
 export const factorPolicyOperations=Object.freeze(['account_create','control_keys_replace','device_add','login','create_account','link','unlink','rekey','resume','device_disable','device_enable','device_remove','signing_lock','signing_unlock','policy_update','security_key_add','security_key_remove']);
 export function defaultIdentityAssurance(operation){
   if(!factorPolicyOperations.includes(operation))reject('IDENTITY_OPERATION_UNSUPPORTED');
-  const recoveryControl=['policy_update','signing_lock','signing_unlock','security_key_add','security_key_remove'].includes(operation),level=recoveryControl?3:4;
+  if(['login','create_account','link'].includes(operation))return {schema:'passli:loa:four:v1',requiredLevel:1,achievedLevel:1,factors:['registered-device'],policyRevision:'0'};
+  const recoveryControl=['device_add','policy_update','signing_lock','signing_unlock','security_key_add','security_key_remove'].includes(operation),level=recoveryControl?3:4;
   return {schema:'passli:loa:four:v1',requiredLevel:level,achievedLevel:level,factors:recoveryControl?['mobile-approval','fresh-biometric']:['mobile-approval','fresh-biometric','security-key'],policyRevision:'0'};
 }
 export function validateIdentityPolicy(value){
   if(value?.kind==='algorithm'){
     fields(value,['kind','minimumProfile','allowedAlgorithms','revision']);
     const {kind,...policy}=value;validateAlgorithmPolicy(policy);
+  }else if(value?.kind==='signers'){fields(value,['kind','minimum','revision']);const {kind,...minimum}=value;validateSignerMinimum(minimum);
   }else if(value?.kind==='factors'){
     fields(value,['kind','revision','operations']);revision(value.revision);fields(value.operations,factorPolicyOperations);
     for(const policy of Object.values(value.operations)){validateAssurance(policy);if(policy.policyRevision!==value.revision||policy.requiredLevel!==policy.achievedLevel||policy.factors.includes('additional-method'))reject('IDENTITY_POLICY_INVALID');}
@@ -71,17 +74,19 @@ export function validateTransaction(t,{schemas={}}={}){
   if(t.expiresAt<=t.issuedAt||t.expiresAt-t.issuedAt>(r.ttl||60))reject('IDENTITY_EXPIRY_INVALID');
   const c=t.context;
   if(r.rp){
-    fields(c,['site','origin','userIdentifier','localAccountID','bindingID','keysetVersion','controlEpoch','sessionBinding','completionEndpoint','algorithmPolicy']);validateAlgorithmBinding(c.algorithmPolicy);site(c.site);site(c.origin);if(t.audience!==c.origin)reject();b16(c.userIdentifier);nonempty(c.localAccountID);b16(c.bindingID);revision(c.keysetVersion);revision(c.controlEpoch);if(c.keysetVersion==='0')reject();
+    fields(c,['site','origin','userIdentifier','localAccountID','bindingID','keysetVersion','controlEpoch','sessionBinding','completionEndpoint','algorithmPolicy',...(c.signerPolicy?['signerPolicy','independentProvider']:[])]);if(c.signerPolicy){validateSignerPolicy(c.signerPolicy,t.operation);validateIndependentProvider(c.independentProvider);}validateAlgorithmBinding(c.algorithmPolicy);site(c.site);site(c.origin);if(t.audience!==c.origin)reject();b16(c.userIdentifier);nonempty(c.localAccountID);b16(c.bindingID);revision(c.keysetVersion);revision(c.controlEpoch);if(c.keysetVersion==='0')reject();
     if(t.operation==='suspend'){if(c.sessionBinding!==null||c.completionEndpoint!==null||t.assurance!==null)reject();}
     else {b32(c.sessionBinding);text(c.completionEndpoint);let u;try{u=new URL(c.completionEndpoint);}catch{reject();}if(u.origin!==c.origin||u.username||u.password||u.hash||u.href!==c.completionEndpoint)reject();}
+  }else if(t.operation==='device_add'){fields(c,['accountID','authorizationGeneration','sessionBinding']);accountID(c.accountID);revision(c.authorizationGeneration);if(c.authorizationGeneration==='0')reject();b32(c.sessionBinding);
   }else{fields(c,['accountID','controlVersion','sessionBinding']);accountID(c.accountID);revision(c.controlVersion);b32(c.sessionBinding);if((t.operation==='account_create')!==(c.controlVersion==='0'))reject();}
   if(t.operation==='device_recover'){if(t.assurance!==null)reject();}
   else if(t.operation!=='suspend')validateAssurance(t.assurance);
-  fields(t.parameters,Object.keys(r.params));for(const [k,v]of Object.entries(r.params)){
+  fields(t.parameters,[...Object.keys(r.params),...(r.params.pub1&&c.signerPolicy?['pub3']:[])]);if(r.params.pub1&&c.signerPolicy)descriptor(t.parameters.pub3,'independent');for(const [k,v]of Object.entries(r.params)){
     if(typeof v==='function')v(t.parameters[k]);
     else {const validator=pairingSchemas[v]||(v==='policy'?validateIdentityPolicy:schemas[v]);if(typeof validator!=='function'||validator(t.parameters[k])!==true)reject('IDENTITY_SCHEMA_UNSUPPORTED');}
   }
   const p=t.parameters;
+  if(p.pub3&&(p.pub3.algorithm!==p.pub1.algorithm||new Set([p.pub1.publicKey,p.pub2.publicKey,p.pub3.publicKey]).size!==3))reject();
   if(p.pub1){if(p.pub1.algorithm!==p.pub2.algorithm||p.pub1.publicKey===p.pub2.publicKey||p.pub1.algorithm!==c.algorithmPolicy.selectedAlgorithm)reject();}
   if(['link','create_account'].includes(t.operation)&&(c.keysetVersion!=='1'||c.controlEpoch!=='0'))reject();
   if(t.operation==='rekey')step(c.keysetVersion,p.nextKeysetVersion);

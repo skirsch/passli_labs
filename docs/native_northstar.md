@@ -1,3 +1,10 @@
+## Three-key update (2026-11-11)
+
+Northstar now registers user, cloud and independent keys. Normal login requires
+user + cloud; linking/unlinking and key replacement require all three. The
+independent signer is a software prototype. Demo two-key links are retired at
+cutover; local accounts, notes and password access remain.
+
 # Native Northstar account integration
 
 Version: 2

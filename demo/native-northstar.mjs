@@ -17,7 +17,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
  const browser=req=>{const values=String(req.headers.cookie||'').split(';').map(v=>v.trim()).filter(v=>v.startsWith(cookieName+'='));return values.length===1?values[0].slice(cookieName.length+1):null;};
  const json=(res,status,body)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(body));};
  const policy=config.policyProvider?createNativeRPPolicy({origin,...config.policyProvider}):null;
- const settings=policy?{...config,algorithmPolicies:policy.algorithmPolicies,assuranceFor:policy.assuranceFor}:config;
+ const settings=policy?{...config,algorithmPolicies:policy.algorithmPolicies,assuranceFor:policy.assuranceFor,signerPolicyFor:policy.signerPolicyFor,requireThreeKeys:true}:config;
  let operations;
  const ledger=createNativeRPLedger({...settings,path:config.path||':memory:',database:db,site:origin,origin,now:()=>Math.floor(now()/1000),beforeTransition({transaction:t}){
   if(['link','unlink'].includes(t.operation)){const id=db.prepare('SELECT browser FROM ns_contexts WHERE id=?').get(t.context.sessionBinding)?.browser,w=id&&read('ns_browsers',id);if(!validSession(w)||w.session.id!==w.pending?.sessionID)fail();}
@@ -42,6 +42,14 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
   }else if(result.sessionToken){w.session={id:random(),accountID:a.id,method:'passli',token:result.sessionToken};}
   w.pending=null;write('ns_accounts',a.id,a);write('ns_browsers',id,w);
  }});
+ // Retire only links to the two-key demo bindings already retired by the ledger.
+ if(settings.requireThreeKeys){
+  for(const row of db.prepare('SELECT id,value FROM ns_accounts').all()){
+   const a=JSON.parse(row.value);if(!a.bindingID)continue;
+   const old=ledger.binding(a.bindingID);
+   if(old?.keys.length===2){a.subject=null;a.bindingID=null;write('ns_accounts',a.id,a);}
+  }
+ }
  function validSession(w){const a=w?.session&&account(w.session.accountID);if(!a)return null;if(w.session.method==='passli'){const s=ledger.session(w.session.token);if(!s||s.localAccountID!==a.id||s.userIdentifier!==a.subject)return null;}return a;}
  function localLink(s){const w=s&&read('ns_browsers',s.browser),a=validSession(w);if(!a||w.session.id!==s.sessionID||a.id!==s.localAccountID||a.subject)fail();return a.id;}
  const base=createNativeRPOperations({...settings,ledger,origin,now:()=>Math.floor(now()/1000),authorizeLocalLink:localLink});
@@ -77,7 +85,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
   if(path.startsWith('/api/identity/'))return http.handle(req,res);
   if(!path.startsWith('/api/northstar/')){
    // The old Northstar API/callback cannot issue sessions after native cutover.
-   if(['/api/state','/api/private','/api/action','/auth/passli/callback','/auth/passli/pii-return'].includes(path)){json(res,410,{error:'Northstar uses native two-key login. Open /northstar/.'});return true;}return false;
+   if(['/api/state','/api/private','/api/action','/auth/passli/callback','/auth/passli/pii-return'].includes(path)){json(res,410,{error:'Northstar uses native three-key login. Open /northstar/.'});return true;}return false;
   }
   try{
    let id=browser(req),w=id&&read('ns_browsers',id);

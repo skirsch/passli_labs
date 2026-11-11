@@ -19,22 +19,24 @@ export function verifyRPTransition(packet,{expected,binding,site:registeredSite,
   if(enroll){
     if(binding!==null)reject('IDENTITY_ALREADY_LINKED');
     verifyEnrollmentCertificate(t,packet.enrollmentCertificate,{...provider,now});
-    keys=[t.parameters.pub1,t.parameters.pub2];
+    keys=[t.parameters.pub1,t.parameters.pub2,...(c.signerPolicy?[t.parameters.pub3]:[])];
   }else{
     if(packet.enrollmentCertificate!==null||!binding||binding.state==='unlinked')reject('IDENTITY_BINDING_INVALID');
     for(const field of ['site','origin','userIdentifier','localAccountID','bindingID','keysetVersion','controlEpoch'])if(binding[field]!==c[field])reject('IDENTITY_BINDING_CHANGED');
-    if(!Array.isArray(binding.keys)||binding.keys.length!==2||binding.keys[0].role!=='user'||binding.keys[1].role!=='cloud')reject('IDENTITY_KEY_INVALID');
+    if(!Array.isArray(binding.keys)||binding.keys.length!==(c.signerPolicy?3:2)||binding.keys[0].role!=='user'||binding.keys[1].role!=='cloud'||c.signerPolicy&&binding.keys[2].role!=='independent')reject('IDENTITY_KEY_INVALID');
     if(t.operation==='login'&&binding.state!=='active')reject('IDENTITY_BINDING_SUSPENDED');
     if(t.operation==='resume'&&binding.state!=='emergency_suspended')reject('IDENTITY_BINDING_NOT_SUSPENDED');
     keys=t.operation==='suspend'?[binding.keys[1]]:binding.keys;
   }
   if(!['suspend','unlink'].includes(t.operation))assertCurrentAlgorithmPolicy(c.algorithmPolicy,algorithmPolicies);
-  verifyTransactionSignatures(packet.response,{expected:t,keys,now});
+  if(c.signerPolicy&&!enroll&&canonical(binding.independentProvider)!==canonical(c.independentProvider))reject('IDENTITY_BINDING_CHANGED');
+  const required=c.signerPolicy?keys.filter(k=>c.signerPolicy.requiredRoles.includes(k.role)):keys;
+  verifyTransactionSignatures(packet.response,{expected:t,keys:required,now});
   if(!Array.isArray(packet.newKeyProofs))reject();
   const next=enroll?{...copy(c),keys:copy(keys),state:'active',sessionGeneration:'1'}:copy(binding);
   delete next.sessionBinding;delete next.completionEndpoint;
   if(t.operation==='rekey'){
-    const proposed=[t.parameters.pub1,t.parameters.pub2];verifyKeyPossession(t,packet.newKeyProofs,proposed,'passli:new-key-possession:v1');
+    const proposed=[t.parameters.pub1,t.parameters.pub2,...(c.signerPolicy?[t.parameters.pub3]:[])];verifyKeyPossession(t,packet.newKeyProofs,proposed,'passli:new-key-possession:v1');
     next.keys=copy(proposed);next.keysetVersion=t.parameters.nextKeysetVersion;next.controlEpoch=t.parameters.nextControlEpoch;next.algorithmPolicy=copy(c.algorithmPolicy);next.state='active';
   }else if(packet.newKeyProofs.length)reject();
   if(t.operation==='suspend')next.state='emergency_suspended';
