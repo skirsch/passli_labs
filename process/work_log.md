@@ -460,3 +460,8 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Replaced real Northstar Direct login/unlink with stable-subject native operations, two pinned signatures and atomic local-account/keyset commits. One account per identity; LoA4 unlink preserves notes/password access and invalidates Passli sessions.
 - node --test demo/test/*.test.mjs: 102 passed, covering four algorithms, cancellation, wrong keys, replay, restart, new browser and native UI. Reviewed runtime copied with scripts/sync-native-runtime.mjs and verified by SHA-256 manifest.
 - Demo036; qrcode now a production dependency. Mandatory configuration/cookie mounts in docs/native_northstar.md. New real page covers identity and notes; checkout/profile/deletion UI remains in walkthrough. Not deployed; live phone acceptance pending. Three-key work remains held.
+
+### 2026-11-11 Native account acceptance corrections
+- Fixed Passli-created demo accounts having no fictional email login after unlinking. The page now shows their demo-only address; LoA4/two-signature unlink remains unchanged.
+- Fixed Save note reading stale text after a busy-state render; preserve dirty drafts across state refreshes. Extended HTTP first-create/unlink/local-return/relink and UI note-edit regression tests.
+- Demo037; run node --test demo/test/*.test.mjs. These are software checks, not deployment or physical-phone acceptance.

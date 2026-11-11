@@ -41,6 +41,10 @@ test('native account, keyset and notes survive server restart and a new browser'
 });
 test('first Passli visit creates one native account; the old callback cannot authenticate',async t=>{
  const f=await fixture(t),c=f.client(),user=pair('user'),cloud=pair('cloud'),subject=random64(16);await c.state();const h=await f.begin(c,'discover',subject,user,cloud);assert.equal(h.t.operation,'create_account');await f.finish(c,h,user,cloud);assert.equal((await c.state()).account.linked,true);assert.equal((await c.request('/auth/passli/callback?code=old-token')).status,410);
+ const created=(await c.state()).account;assert.match(created.email,/^passli-[a-z0-9_-]+@example\.test$/);
+ await c.action('notes-save',{notes:'Created using Passli'});const unlink=await f.begin(c,'unlink',subject,user,cloud);await f.finish(c,unlink,user,cloud);
+ const local=await c.action('password-login',{email:created.email,password:'demo'});assert.equal(local.account.id,created.id);assert.equal(local.account.notes,'Created using Passli');assert.equal(local.account.linked,false);
+ const relink=await f.begin(c,'link',subject,user,cloud);await f.finish(c,relink,user,cloud);assert.equal((await c.state()).account.id,created.id);
 });
 test('cancellation and account switching fence a signed link; one account per identity',async t=>{
  const f=await fixture(t),c=f.client(),user=pair('user'),cloud=pair('cloud'),subject=random64(16);await c.state();await c.action('password-login',{email:'first@example.test',password:'demo'});

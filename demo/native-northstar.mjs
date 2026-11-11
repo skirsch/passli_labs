@@ -30,7 +30,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
    if(!a||!w.session||w.session.id!==p.sessionID||w.session.accountID!==c.localAccountID)fail();
   }
   if(t.operation==='create_account'){
-   if(a)fail();a={id:c.localAccountID,name:'Passli member',email:null,notes:'',subject:null,created:now(),expires:now()+lifetime};
+   if(a)fail();a={id:c.localAccountID,name:'Passli member',email:'passli-'+c.localAccountID.toLowerCase()+'@example.test',notes:'',subject:null,created:now(),expires:now()+lifetime};
   }else if(!a)fail();
   if(['create_account','link'].includes(t.operation)){if(a.subject)fail();a.subject=c.userIdentifier;a.bindingID=c.bindingID;}
   else if(a.subject!==c.userIdentifier||a.bindingID!==c.bindingID)fail();
@@ -58,7 +58,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
   db.prepare('INSERT INTO ns_contexts VALUES(?,?) ON CONFLICT(id) DO UPDATE SET browser=excluded.browser').run(binding,id);
   return {browser:id,sessionID:w.session?.id||null,localAccountID:a?.id||null,userIdentifier:a?.subject||null};
  }});
- function state(w){const a=validSession(w);return {csrf:w.csrf,account:a?{id:a.id,name:a.name,notes:a.notes,linked:!!a.subject,expires:a.expires}:null,pending:!!w.pending,ticket:w.pending?.ticket||null,protocol:'passli:identity-operations:v1'};}
+ function state(w){const a=validSession(w);return {csrf:w.csrf,account:a?{id:a.id,name:a.name,email:a.email,notes:a.notes,linked:!!a.subject,expires:a.expires}:null,pending:!!w.pending,ticket:w.pending?.ticket||null,protocol:'passli:identity-operations:v1'};}
  function expireAccounts(){
   const expired=db.prepare('SELECT id,value FROM ns_accounts').all().filter(r=>JSON.parse(r.value).expires<=now());
   if(!expired.length)return;

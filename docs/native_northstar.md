@@ -1,6 +1,6 @@
 # Native Northstar account integration
 
-Version: 1
+Version: 2
 Date: 2026-11-11
 
 Northstar's real account page uses `passli:identity-operations:v1`: a stable
@@ -10,6 +10,10 @@ TV, Schwab and Bank Wire retain their separate existing integrations.
 
 The native page supports fictional password login, linking an existing account,
 first-use Passli account creation, returning login, saved notes and unlinking.
+Passli-created demo accounts receive a displayed fictional email login, usable
+with the public password `demo` after unlinking. This is the existing fictional
+Northstar password mechanism, not a Passli recovery bypass. Unsaved note edits
+survive state refreshes, and Save captures the draft before rendering busy state.
 It does not send users through the old Direct login/unlink continuation. The old
 Northstar account API and callback return 410 after native activation, so they
 cannot bypass the two-key verifier. There is no import of old demo associations.
