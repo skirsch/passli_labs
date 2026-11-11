@@ -20,8 +20,8 @@ async function fixture(t,{root=pair('provider','ml-dsa-87'),database=':memory:'}
  async function finish(c,h,user,cloud){assert.equal(h.proposal.status,200,JSON.stringify(h.proposal.data));assert.equal((await c.request(h.path+'/submit',packet(h.t,user,cloud))).status,200);const r=await c.request(h.path+'/finish',{});assert.equal(r.status,200,JSON.stringify(r.data));return r;}
  return {client,begin,packet,finish,close};
 }
-for(const algorithm of ['ed25519','ml-dsa-44','ml-dsa-65','ml-dsa-87'])test('native Northstar link/login/unlink with '+algorithm,async t=>{
- const f=await fixture(t),c=f.client(),other=f.client(),user=pair('user',algorithm),cloud=pair('cloud',algorithm),subject=random64(16);await c.state();
+for(const algorithm of ['ed25519','ml-dsa-44','ml-dsa-65','ml-dsa-87','mixed'])test('native Northstar link/login/unlink with '+algorithm,async t=>{
+ const f=await fixture(t),c=f.client(),other=f.client(),user=pair('user',algorithm==='mixed'?'ed25519':algorithm),cloud=pair('cloud',algorithm==='mixed'?'ml-dsa-65':algorithm),subject=random64(16);await c.state();
  const initial=await c.action('password-login',{email:'native@example.test',password:'demo'}),id=initial.account.id;await c.action('notes-save',{notes:'Preserve this note'});
  const link=await f.begin(c,'link',subject,user,cloud);assert.equal(link.t.operation,'link');assert.equal(link.t.context.localAccountID,id);
  await other.state();await other.request('/api/identity/context');assert.equal((await other.request(link.path+'/finish',{})).status,400);
@@ -29,7 +29,7 @@ for(const algorithm of ['ed25519','ml-dsa-44','ml-dsa-65','ml-dsa-87'])test('nat
  await f.finish(c,link,user,cloud);assert.equal((await c.state()).account.linked,true);
  await c.action('logout');const login=await f.begin(c,'discover',subject,user,cloud);assert.equal(login.t.operation,'login');await f.finish(c,login,user,cloud);assert.equal((await c.state()).account.id,id);
  const unlink=await f.begin(c,'unlink',subject,user,cloud);assert.equal(unlink.t.assurance.requiredLevel,4);assert.equal(unlink.t.context.bindingID,link.t.context.bindingID);
- const wrong=f.packet(unlink.t,pair('user',algorithm),cloud);assert.equal((await c.request(unlink.path+'/submit',wrong)).status,400);
+ const wrong=f.packet(unlink.t,pair('user',algorithm==='mixed'?'ed25519':algorithm),cloud);assert.equal((await c.request(unlink.path+'/submit',wrong)).status,400);
  await f.finish(c,unlink,user,cloud);assert.equal((await c.state()).account,null);
  const back=await c.action('password-login',{email:'native@example.test',password:'demo'});assert.equal(back.account.id,id);assert.equal(back.account.notes,'Preserve this note');assert.equal(back.account.linked,false);
  assert.equal((await c.request(link.path+'/finish',{})).status,400,'old link cannot revive the binding');

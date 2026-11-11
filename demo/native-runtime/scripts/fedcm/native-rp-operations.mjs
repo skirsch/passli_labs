@@ -28,7 +28,7 @@ export function createNativeRPOperations({ledger,origin,algorithmPolicies,assura
     localAccountID=authorizeLocalLink(localSession);
     if(typeof localAccountID!=='string'||!localAccountID)reject('IDENTITY_LINK_AUTHORITY_REQUIRED');
    }
-   const policies=algorithmPolicies(input.userIdentifier),algorithm=newKeys?input.pub1?.algorithm:binding.keys[0]?.algorithm;
+   const policies=algorithmPolicies(input.userIdentifier),keys=newKeys?[input.pub1,input.pub2,input.pub3].filter(Boolean):binding.keys,algorithm=keys.length===3?Object.fromEntries(keys.map(k=>[k.role,k.algorithm])):keys[0]?.algorithm;
    const policy=operation==='unlink'?binding.algorithmPolicy:algorithmBinding(algorithm,policies),assurance=requestedAssurance(assuranceFor(operation,input.userIdentifier),requestedLevel);validateAssurance(assurance);
    const issuedAt=now(),parameters=newKeys?{pub1:input.pub1,pub2:input.pub2,...(input.pub3?{pub3:input.pub3}:{})}:{};
    if(operation==='rekey'){parameters.nextKeysetVersion=nextRevision(binding.keysetVersion);parameters.nextControlEpoch=nextRevision(binding.controlEpoch);}
@@ -43,13 +43,14 @@ export function createNativeRPOperations({ledger,origin,algorithmPolicies,assura
   completion:requestID=>ledger.completion(requestID),
   session:token=>ledger.session(token),logout:token=>ledger.logout(token),
   startHandoff(sessionBinding,input={},localSession=null){
-   fields(input,[...(Object.hasOwn(input,'operation')?['operation']:[]),...(Object.hasOwn(input,'requestedLevel')?['requestedLevel']:[]),...(Object.hasOwn(input,'requestedKeyCount')?['requestedKeyCount']:[]),...(Object.hasOwn(input,'requestedAlgorithm')?['requestedAlgorithm']:[])]);const operation=input.operation||'discover';
+   fields(input,[...(Object.hasOwn(input,'operation')?['operation']:[]),...(Object.hasOwn(input,'requestedLevel')?['requestedLevel']:[]),...(Object.hasOwn(input,'requestedKeyCount')?['requestedKeyCount']:[]),...(Object.hasOwn(input,'requestedAlgorithm')?['requestedAlgorithm']:[]),...(input.requestedAlgorithms?['requestedAlgorithms']:[])]);const operation=input.operation||'discover';
    if(input.requestedKeyCount!==undefined&&![2,3].includes(input.requestedKeyCount))reject('IDENTITY_SIGNER_PROFILE_UNSUPPORTED');
+   if(input.requestedAlgorithms){fields(input.requestedAlgorithms,['user','cloud','independent']);if(Object.values(input.requestedAlgorithms).some(a=>a!==null&&!Object.values(profileAlgorithms).includes(a)))reject('IDENTITY_ALGORITHM_UNSUPPORTED');}
    if(input.requestedAlgorithm!==undefined&&!Object.values(profileAlgorithms).includes(input.requestedAlgorithm))reject('IDENTITY_ALGORITHM_UNSUPPORTED');
    if(!['discover','link','unlink','rekey'].includes(operation))reject('IDENTITY_OPERATION_UNSUPPORTED');
    if(operation==='link'){if(typeof authorizeLocalLink!=='function')reject('IDENTITY_LINK_AUTHORITY_REQUIRED');authorizeLocalLink(localSession);}
    else if(operation!=='discover'&&!localSession?.userIdentifier)reject('IDENTITY_LOCAL_SESSION_REQUIRED');
-   return ledger.createHandoff(sessionBinding,{requestedOperation:operation,userIdentifier:['discover','link'].includes(operation)?null:localSession.userIdentifier,requestedLevel:input.requestedLevel??1,requestedKeyCount:input.requestedKeyCount??2,requestedAlgorithm:operation==='unlink'?null:input.requestedAlgorithm??null,localSession:operation==='link'?localSession:null});
+   return ledger.createHandoff(sessionBinding,{requestedOperation:operation,userIdentifier:['discover','link'].includes(operation)?null:localSession.userIdentifier,requestedLevel:input.requestedLevel??1,requestedKeyCount:input.requestedKeyCount??2,requestedAlgorithm:operation==='unlink'?null:input.requestedAlgorithm??null,requestedAlgorithms:operation==='unlink'?null:input.requestedAlgorithms??null,localSession:operation==='link'?localSession:null});
   },
   handoff:(ticket,sessionBinding)=>ledger.handoff(ticket,sessionBinding),
   proposeHandoff(ticket,input){
@@ -61,6 +62,7 @@ export function createNativeRPOperations({ledger,origin,algorithmPolicies,assura
    const operation=pending.requestedOperation==='discover'?(ledger.bindingForSubject(input.userIdentifier)?'login':'create_account'):pending.requestedOperation;
    const algorithm=operation==='login'?ledger.bindingForSubject(input.userIdentifier)?.keys[0].algorithm:input.pub1?.algorithm;
    if(pending.requestedAlgorithm&&algorithm!==pending.requestedAlgorithm)reject('IDENTITY_REKEY_REQUIRED');
+   const proposed=operation==='login'?ledger.bindingForSubject(input.userIdentifier)?.keys:[input.pub1,input.pub2,input.pub3];if(pending.requestedAlgorithms)for(const k of proposed.filter(Boolean)){const requested=pending.requestedAlgorithms[k.role];if(requested&&requested!==k.algorithm)reject('IDENTITY_REKEY_REQUIRED');}
    const t=api.prepare({operation,userIdentifier:input.userIdentifier,...(['create_account','link','rekey'].includes(operation)?{pub1:input.pub1,pub2:input.pub2,...(input.pub3?{pub3:input.pub3,independentProvider:input.independentProvider}:{})}:{})},pending.sessionBinding,pending.localSession,pending.requestedLevel??1,pending.requestedKeyCount??2);
    ledger.updateHandoff(ticket,'waiting',{stage:'prepared',transaction:t,proposal:JSON.parse(canonical(input)),packet:null});return t;
   },

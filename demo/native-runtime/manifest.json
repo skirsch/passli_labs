@@ -1,20 +1,20 @@
 {
   "source": "skirsch/passli",
   "files": {
-    "packages/identity-protocol/algorithm-policy.mjs": "585a7698aa3bbc6dcff65ab7415b33db4ddab6eb52b6bc315c82711fb637224b",
+    "packages/identity-protocol/algorithm-policy.mjs": "43b59013ee96ec3a16bd3800a3cd36738a968ff0a99dcdbafd756334577a0517",
     "packages/identity-protocol/assurance-policy.mjs": "72d51212c3038d192f1469bd63eda76944e096f6ce4a5afa12dfb03ae300dbd8",
     "packages/identity-protocol/configuration.node.mjs": "2ab641595bce3f69aa96c88e07b8b5bb40a2672c169bd7f21ce48b403a79181a",
-    "packages/identity-protocol/crypto.node.mjs": "9ba96891132f4af0fe47a0587ac430ca5580c44e1f0bfb9e72f1f223337b9bc5",
+    "packages/identity-protocol/crypto.node.mjs": "6c684a16dd7d6c4fd18205836070835ff78bd011dfa2c97161ef7e44bfd65cbd",
     "packages/identity-protocol/device-key-schema.mjs": "03dec88c06928910bd95489b3762ff6a2e5c6151494c08d33e3031427fa859e6",
     "packages/identity-protocol/encoding.mjs": "238d91b03f3405a848204f8214491466742372f043706c40a10fea710f92f7b5",
     "packages/identity-protocol/provider-enrollment.mjs": "45ea4c88902baa518be3027bc91fd8a913a13a09980a46f5eb5280553008cfd0",
     "packages/identity-protocol/rp-verifier.node.mjs": "d918ec43dd7722cffa345e3c57102668885a2b3c5126919ba738d9f706043b66",
-    "packages/identity-protocol/schema.mjs": "0e60d2c9133aaba63a5f8bea1a75bc18eaa74bac12ea49949cd7430f2aa5345c",
+    "packages/identity-protocol/schema.mjs": "348fea0f91990ce94c498c3de0cdbc69c75f52650594a70887eca2b2a6383d62",
     "packages/identity-protocol/signer-policy.mjs": "bcbfd560b34808126914ef4a04b252779a54efd90bf7ce377e4ca08db6289206",
     "scripts/fedcm/native-rp-configuration.mjs": "b82c26d9f5e62dd4691a4eeacd7c4cd5ef134d944489c14b9c64bea235351fa8",
     "scripts/fedcm/native-rp-http.mjs": "2df99751015601367459c33c781689e5ca6a568c968f0c27d7fcbf0ff40211c9",
-    "scripts/fedcm/native-rp-ledger.mjs": "14a06346c50a96ff920a13924cbe92e1e9a406dfb93730a607461d477448aef7",
-    "scripts/fedcm/native-rp-operations.mjs": "d0844d9d516fb9085fa10f3d8a8cf9fef10288b17cc1759ce1c9bed0e42e6621",
+    "scripts/fedcm/native-rp-ledger.mjs": "00ecca9643110369ab5699e8692cb7fa6397c49f3fa7bba841d3471b71aba7d8",
+    "scripts/fedcm/native-rp-operations.mjs": "8fda7d913a266b9e7c471b9e3b6cb759fc614be408541b3f51449b38ec0a34a0",
     "scripts/fedcm/native-rp-policy.mjs": "c363a22a3e14803e3a7992abbf93f9621f582c3df2e75c960d3c1d094c011d59"
   }
 }

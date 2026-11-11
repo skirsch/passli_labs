@@ -42,12 +42,12 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
   }else if(result.sessionToken){w.session={id:random(),accountID:a.id,method:'passli',token:result.sessionToken};}
   w.pending=null;write('ns_accounts',a.id,a);write('ns_browsers',id,w);
  }});
- // Retire only links to the two-key demo bindings already retired by the ledger.
+ // Retire only links to obsolete demo bindings already retired by the ledger.
  if(settings.requireThreeKeys){
   for(const row of db.prepare('SELECT id,value FROM ns_accounts').all()){
    const a=JSON.parse(row.value);if(!a.bindingID)continue;
    const old=ledger.binding(a.bindingID);
-   if(old?.keys.length===2){a.subject=null;a.bindingID=null;write('ns_accounts',a.id,a);}
+   if(old&&(old.keys.length===2||!old.algorithmPolicy?.selectedAlgorithms)){a.subject=null;a.bindingID=null;write('ns_accounts',a.id,a);}
   }
  }
  function validSession(w){const a=w?.session&&account(w.session.accountID);if(!a)return null;if(w.session.method==='passli'){const s=ledger.session(w.session.token);if(!s||s.localAccountID!==a.id||s.userIdentifier!==a.subject)return null;}return a;}

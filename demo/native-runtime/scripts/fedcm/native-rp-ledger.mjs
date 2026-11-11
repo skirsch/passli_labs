@@ -33,7 +33,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
   // Explicitly authorized demo cutover: retire only two-key bindings. Preserve
   // their rows/visit history for review; no Passli identity or vault is touched.
   if(requireThreeKeys){db.exec(`BEGIN IMMEDIATE;
-    UPDATE native_bindings SET active=0 WHERE active=1 AND json_array_length(value_json,'$.keys')=2;
+    UPDATE native_bindings SET active=0 WHERE active=1 AND (json_array_length(value_json,'$.keys')=2 OR json_extract(value_json,'$.algorithmPolicy.selectedAlgorithms') IS NULL);
     DELETE FROM native_sessions WHERE binding_id IN (SELECT id FROM native_bindings WHERE active=0);
     COMMIT;`);}
   const getBinding=id=>{const row=db.prepare('SELECT value_json FROM native_bindings WHERE id=?').get(id);return row?JSON.parse(row.value_json):null;};
@@ -43,7 +43,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
     close:()=>{if(!database)db.close();},
     setPolicyTicket(subject,keyID,ticket){decode64(subject,16);decode64(keyID,32);if(typeof ticket!=='string'||ticket.length>2048)reject();db.prepare('INSERT INTO native_policy_tickets VALUES(?,?,?) ON CONFLICT(subject,cloud_key) DO UPDATE SET ticket=excluded.ticket').run(subject,keyID,ticket);},
     policyTicket(subject,keyID){return db.prepare('SELECT ticket FROM native_policy_tickets WHERE subject=? AND cloud_key=?').get(subject,keyID)?.ticket;},
-    createHandoff(sessionBinding,{requestedOperation='discover',userIdentifier=null,requestedLevel=1,requestedKeyCount=2,requestedAlgorithm=null,localSession=null}={}){
+    createHandoff(sessionBinding,{requestedOperation='discover',userIdentifier=null,requestedLevel=1,requestedKeyCount=2,requestedAlgorithm=null,requestedAlgorithms=null,localSession=null}={}){
       if(!Number.isInteger(requestedLevel)||requestedLevel<1||requestedLevel>4)reject('IDENTITY_POLICY_INVALID');
       if(!['discover','link','unlink','rekey'].includes(requestedOperation)||requestedOperation==='discover'&&userIdentifier!==null)reject();if(userIdentifier!==null)decode64(userIdentifier,16);
       decode64(sessionBinding,32);const ticket=randomBytes(32).toString('base64url'),expires=now()+600;
@@ -53,7 +53,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
         // receipts remain available to a phone reconciling a lost acknowledgment.
         db.prepare("DELETE FROM native_handoffs WHERE browser=? AND json_extract(value_json,'$.stage') IN ('complete','cancelled')").run(sessionBinding);
         if(db.prepare('SELECT count(*) AS total FROM native_handoffs WHERE browser=?').get(sessionBinding).total>=4||db.prepare('SELECT count(*) AS total FROM native_handoffs').get().total>=1000)reject('IDENTITY_PENDING_LIMIT');
-        db.prepare('INSERT INTO native_handoffs VALUES(?,?,?,?)').run(tokenHash(ticket),sessionBinding,expires,canonical({stage:'waiting',transaction:null,packet:null,requestedOperation,userIdentifier,requestedLevel,requestedKeyCount,requestedAlgorithm,localSession}));
+        db.prepare('INSERT INTO native_handoffs VALUES(?,?,?,?)').run(tokenHash(ticket),sessionBinding,expires,canonical({stage:'waiting',transaction:null,packet:null,requestedOperation,userIdentifier,requestedLevel,requestedKeyCount,requestedAlgorithm,requestedAlgorithms,localSession}));
       });return {ticket,expires};
     },
     handoff(ticket,sessionBinding){
@@ -64,7 +64,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
     },
     updateHandoff(ticket,expectedStage,value){
       return atomic(()=>{const prior=this.handoff(ticket);if(prior.stage!==expectedStage)reject('IDENTITY_HANDOFF_CHANGED');
-        db.prepare('UPDATE native_handoffs SET value_json=? WHERE token_hash=?').run(canonical({...value,requestedOperation:prior.requestedOperation,userIdentifier:prior.userIdentifier,requestedLevel:prior.requestedLevel??1,requestedKeyCount:prior.requestedKeyCount??2,requestedAlgorithm:prior.requestedAlgorithm??null,localSession:prior.localSession??null}),tokenHash(ticket));return this.handoff(ticket);});
+        db.prepare('UPDATE native_handoffs SET value_json=? WHERE token_hash=?').run(canonical({...value,requestedOperation:prior.requestedOperation,userIdentifier:prior.userIdentifier,requestedLevel:prior.requestedLevel??1,requestedKeyCount:prior.requestedKeyCount??2,requestedAlgorithm:prior.requestedAlgorithm??null,requestedAlgorithms:prior.requestedAlgorithms??null,localSession:prior.localSession??null}),tokenHash(ticket));return this.handoff(ticket);});
     },
     binding:getBinding,
     bindingForSubject(subject){decode64(subject,16);const row=db.prepare('SELECT value_json FROM native_bindings WHERE subject=? AND active=1').get(subject);return row?JSON.parse(row.value_json):null;},
@@ -77,7 +77,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
     },
     prepare(transaction,sessionBinding){
       const t=JSON.parse(canonical(validateTransaction(transaction)));
-      if(requireThreeKeys&&!t.context.signerPolicy)reject('IDENTITY_THREE_KEYS_REQUIRED');
+      if(requireThreeKeys&&(!t.context.signerPolicy||!t.context.algorithmPolicy.selectedAlgorithms))reject('IDENTITY_THREE_KEYS_REQUIRED');
       if(t.context.site!==site||t.context.origin!==origin||now()<t.issuedAt||now()>=t.expiresAt)reject('IDENTITY_CHALLENGE_INVALID');
       if(t.operation==='suspend'?sessionBinding!==null:sessionBinding!==t.context.sessionBinding)reject('IDENTITY_SESSION_MISMATCH');
       return atomic(()=>{
@@ -89,7 +89,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
     verifyPending(packet,sessionBinding){
       const id=packet?.response?.transaction?.requestID;decode64(id,16);
       const row=db.prepare('SELECT transaction_json FROM native_challenges WHERE id=?').get(id);if(!row)reject('IDENTITY_CHALLENGE_INVALID');
-      const expected=JSON.parse(row.transaction_json);if(requireThreeKeys&&!expected.context.signerPolicy)reject('IDENTITY_THREE_KEYS_REQUIRED');if(expected.context.sessionBinding!==sessionBinding)reject('IDENTITY_SESSION_MISMATCH');
+      const expected=JSON.parse(row.transaction_json);if(requireThreeKeys&&(!expected.context.signerPolicy||!expected.context.algorithmPolicy.selectedAlgorithms))reject('IDENTITY_THREE_KEYS_REQUIRED');if(expected.context.sessionBinding!==sessionBinding)reject('IDENTITY_SESSION_MISMATCH');
       if(assuranceFor&&expected.operation!=='suspend')validateRequestedAssurance(assuranceFor(expected.operation,expected.context.userIdentifier),expected.assurance);
       if(expected.context.signerPolicy)assertCurrentSignerPolicy(expected.context.signerPolicy,expected.operation,signerPolicyFor(expected.context.userIdentifier));
       verifyRPTransition(packet,{expected,binding:getBinding(expected.context.bindingID),site,origin,provider,algorithmPolicies:algorithmPolicies(expected.context.userIdentifier),now:now()});
@@ -100,7 +100,7 @@ export function createNativeRPLedger({path,database,onTransition,beforeTransitio
       return atomic(()=>{
         const challenge=db.prepare('SELECT * FROM native_challenges WHERE id=?').get(id);if(!challenge)reject('IDENTITY_CHALLENGE_INVALID');
         const expected=JSON.parse(challenge.transaction_json),c=expected.context,time=now();
-        if(requireThreeKeys&&!c.signerPolicy)reject('IDENTITY_THREE_KEYS_REQUIRED');
+        if(requireThreeKeys&&(!c.signerPolicy||!c.algorithmPolicy.selectedAlgorithms))reject('IDENTITY_THREE_KEYS_REQUIRED');
         if(time<expected.issuedAt||time>=expected.expiresAt)reject('IDENTITY_EXPIRED');
         if(expected.operation==='suspend'?sessionBinding!==null:sessionBinding!==c.sessionBinding)reject('IDENTITY_SESSION_MISMATCH');
         if(assuranceFor&&expected.operation!=='suspend')validateRequestedAssurance(assuranceFor(expected.operation,c.userIdentifier),expected.assurance);

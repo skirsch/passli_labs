@@ -1,3 +1,4 @@
+import {roleAlgorithm} from './algorithm-policy.mjs';
 import {validateSignerPolicy,validateIndependentProvider,validateSignerMinimum} from './signer-policy.mjs';
 import {accountID,canonical,decode64,fields,reject,revision,site,text,nextRevision} from './encoding.mjs';
 import {validateAlgorithmBinding,validateAlgorithmPolicy} from './algorithm-policy.mjs';
@@ -56,7 +57,7 @@ export function defaultIdentityAssurance(operation){
 }
 export function validateIdentityPolicy(value){
   if(value?.kind==='algorithm'){
-    fields(value,['kind','minimumProfile','allowedAlgorithms','revision']);
+    fields(value,['kind','minimumProfile','allowedAlgorithms','revision',...(value.roles?['roles']:[])]);
     const {kind,...policy}=value;validateAlgorithmPolicy(policy);
   }else if(value?.kind==='signers'){fields(value,['kind','minimum','revision']);const {kind,...minimum}=value;validateSignerMinimum(minimum);
   }else if(value?.kind==='factors'){
@@ -86,8 +87,8 @@ export function validateTransaction(t,{schemas={}}={}){
     else {const validator=pairingSchemas[v]||(v==='policy'?validateIdentityPolicy:schemas[v]);if(typeof validator!=='function'||validator(t.parameters[k])!==true)reject('IDENTITY_SCHEMA_UNSUPPORTED');}
   }
   const p=t.parameters;
-  if(p.pub3&&(p.pub3.algorithm!==p.pub1.algorithm||new Set([p.pub1.publicKey,p.pub2.publicKey,p.pub3.publicKey]).size!==3))reject();
-  if(p.pub1){if(p.pub1.algorithm!==p.pub2.algorithm||p.pub1.publicKey===p.pub2.publicKey||p.pub1.algorithm!==c.algorithmPolicy.selectedAlgorithm)reject();}
+  if(p.pub3&&(p.pub3.algorithm!==roleAlgorithm(c.algorithmPolicy,'independent')||new Set([p.pub1.publicKey,p.pub2.publicKey,p.pub3.publicKey]).size!==3))reject();
+  if(p.pub1){if(p.pub2.algorithm!==roleAlgorithm(c.algorithmPolicy,'cloud')||p.pub1.publicKey===p.pub2.publicKey||p.pub1.algorithm!==roleAlgorithm(c.algorithmPolicy,'user'))reject();}
   if(['link','create_account'].includes(t.operation)&&(c.keysetVersion!=='1'||c.controlEpoch!=='0'))reject();
   if(t.operation==='rekey')step(c.keysetVersion,p.nextKeysetVersion);
   if(['rekey','resume'].includes(t.operation))step(c.controlEpoch,p.nextControlEpoch);

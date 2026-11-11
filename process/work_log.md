@@ -469,3 +469,10 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 ## 2026-11-11 — Three-key Northstar
 
 Synchronized reviewed RP runtime from the owning Passli worktree; three-key registration and adaptive login, all-three link/unlink. Retire authorized demo two-key links while preserving local accounts, notes and password access. Seven native integration tests passed across Ed25519 and all ML-DSA suites, restart, cancellation and identity uniqueness. Version0.1.38; deployment pending.
+
+
+## 2026-11-11 - Profile-scoped mixed-algorithm RP bindings
+
+Synced reviewed runtime; reset obsolete Passli links while preserving local account
+notes. Demo39. All 103 tests pass (node --test demo/test/*.test.mjs), including mixed
+link/login/unlink. Next: rollout and public acceptance; phone testing remains.

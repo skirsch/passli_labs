@@ -1,3 +1,4 @@
+import {roleAlgorithm} from './algorithm-policy.mjs';
 // Node verifier adapter. Native/browser custody adapters do not import this file.
 import {createHash,createPublicKey,sign,verify} from 'node:crypto';
 import {canonical,decode64,fields,reject} from './encoding.mjs';
@@ -35,7 +36,7 @@ export function verifyTransactionSignatures(response,{expected,keys,now,schemas=
   if(!Array.isArray(keys)||new Set(keys.map(k=>k.publicKey)).size!==keys.length)reject();keys.forEach(k=>validateDescriptor(k));
   const proofs=response.signatures;if(!Array.isArray(proofs)||new Set(proofs.map(p=>p.keyID)).size!==proofs.length)reject('IDENTITY_SIGNATURE_INVALID');
   const rp=operationScope(t.operation)==='rp';
-  if(rp&&t.operation!=='rekey'&&keys.some(k=>k.algorithm!==t.context.algorithmPolicy.selectedAlgorithm))reject('IDENTITY_ALGORITHM_MISMATCH');
+  if(rp&&t.operation!=='rekey'&&keys.some(k=>k.algorithm!==roleAlgorithm(t.context.algorithmPolicy,k.role)))reject('IDENTITY_ALGORITHM_MISMATCH');
   if(rp){const roles=t.operation==='suspend'?['cloud']:(t.context.signerPolicy?.requiredRoles||['user','cloud']);if(keys.length!==roles.length||proofs.length!==roles.length)reject();for(const role of roles){const key=keys.find(k=>k.role===role),proof=proofs.find(p=>p.role===role);if(!key||!proof)reject();verifyProof(t,proof,key);}}
   else {const required=t.operation==='account_create'?3:t.operation==='control_keys_replace'?2:1;
     if(keys.length!==3||proofs.length!==required||keys.some((k,i)=>k.role!=='control'+(i+1)||k.algorithm!=='ML-DSA-87-pure-over-SHA256'))reject();
