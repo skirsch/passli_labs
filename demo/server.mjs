@@ -1,3 +1,5 @@
+import {createNativeNorthstar} from './native-northstar.mjs';
+import {loadNativeRPConfiguration} from './native-runtime/scripts/fedcm/native-rp-configuration.mjs';
 import {cartView,checkoutAction,acceptCheckoutDisclosure} from './checkout.mjs';
 import http from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
@@ -13,7 +15,7 @@ import {validatePiiRelease,validateDelivery,publicRelease} from './pii.mjs';
 
 const bodyCheckoutAction=text=>{try{return /^(checkout-|cart|purchase)/.test(JSON.parse(text).action)}catch{return false}};
 const here=dirname(fileURLToPath(import.meta.url));
-export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',now=Date.now,mode='walkthrough',provider,publicPrefix='',cleanupInterval=15000}={}) {
+export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',now=Date.now,mode='walkthrough',provider,publicPrefix='',cleanupInterval=15000,nativeIdentity=null}={}) {
   if (!['real','walkthrough'].includes(mode)) throw Error('Unknown demo mode.');
   const passli=mode==='real'?(provider || createPassli({origin})):null;
   const secure=new URL(origin).protocol === 'https:',cookieName=(secure?'__Host-':'')+(mode==='real'?'northstar-demo':'northstar-walkthrough');
@@ -48,8 +50,9 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
   };
   sweep();const cleanup=setInterval(sweep,cleanupInterval);cleanup.unref();
   const view=world=>({...publicState(world),cart:cartView(world),...(mode==='real'?{mode:'real',modeLabel:'Real Passli authentication · Fictional Northstar accounts'}:{})});
-  const files=new Map([['/northstar/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
+  const files=new Map([['/northstar/', ['index.html','text/html; charset=utf-8']],['/privacy',['privacy.html','text/html; charset=utf-8']],['/terms',['terms.html','text/html; charset=utf-8']],['/native-northstar.js',['native-northstar.js','text/javascript; charset=utf-8']],['/app.js',['app.js','text/javascript; charset=utf-8']],['/style.css',['style.css','text/css; charset=utf-8']],['/passli-mark.svg',['passli-mark.svg','image/svg+xml']]].map(([url,[file,type]])=>[url,{body:readFileSync(resolve(here,'public',file)),type}]));
   for(const [path,file,type] of [['/','selector.html','text/html; charset=utf-8'],['/tv/','tv.html','text/html; charset=utf-8'],['/schwab/','minisite.html','text/html; charset=utf-8'],['/wire/','minisite.html','text/html; charset=utf-8'],['/suite.js','suite.js','text/javascript; charset=utf-8'],['/approval-labels.js','approval-labels.js','text/javascript; charset=utf-8'],['/suite.css','suite.css','text/css; charset=utf-8'],['/tv/phone/','tv-phone.html','text/html; charset=utf-8'],['/tv.js','tv.js','text/javascript; charset=utf-8'],['/tv-phone.js','tv-phone.js','text/javascript; charset=utf-8']])files.set(path,{body:readFileSync(resolve(here,'public',file)),type});
+  const native=nativeIdentity?createNativeNorthstar({db,origin,config:nativeIdentity,version,now}):null;
   const suite=createSuite({db,passli,mode,origin,now});
   const tv=createTv({db,passli,mode,origin,now});
   for(const file of files.values())if(file.type.startsWith('text/html'))file.body=Buffer.from(file.body.toString().replaceAll('{{DEMO_VERSION}}',version));
@@ -60,6 +63,7 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const path=new URL(req.url,origin).pathname;
+    if(native&&await native.handle(req,res,path))return;
     if(await tv.handle(req,res,path))return;
     if(await suite(req,res,path))return;
     if(['/northstar','/tv','/schwab','/wire'].includes(path)){res.writeHead(303,{Location:path+'/'});res.end();return;}
@@ -318,12 +322,14 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     }
   });
   const close=server.close.bind(server);server.close=callback=>{tv.close();return close(callback);};
-  server.once('close',()=>{clearInterval(cleanup);db.close();});return server;
+  server.once('close',()=>{clearInterval(cleanup);native?.close();db.close();});return server;
 }
 if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const port=Number(process.env.PORT||18766),origin=process.env.DEMO_ORIGIN||`http://127.0.0.1:${port}`;
   const mode=process.env.DEMO_MODE||'real';
-  const service=createDemo({origin,mode,database:process.env.DEMO_DATABASE||resolve(here,'data','demo.sqlite')});
+  const database=process.env.DEMO_DATABASE||resolve(here,'data','demo.sqlite');
+  const nativeIdentity=mode==='real'?loadNativeRPConfiguration({configurationFile:process.env.PASSLI_NATIVE_IDENTITY_CONFIG,cookieKeyFile:process.env.PASSLI_NATIVE_RP_COOKIE_KEY,databasePath:database,origin}):null;
+  const service=createDemo({origin,mode,database,nativeIdentity});
   service.listen(port,process.env.HOST||'127.0.0.1',()=>console.log(`Northstar demo ${version} listening at ${origin} (${mode})`));
   const services=[service];
   if(mode==='real'&&process.env.DEMO_WALKTHROUGH!=='0') {

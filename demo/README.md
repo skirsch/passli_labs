@@ -1,7 +1,9 @@
 # Northstar: complete site integration demo
 
-Version: 30
-Updated: 2026-10-29
+Version: 31
+Updated: 2026-11-11
+
+> **Native cutover:** real-mode startup now requires the public identity configuration and RP cookie-key paths described in [native Northstar](../docs/native_northstar.md). The native account page replaces the Direct login/unlink flow below. The older flow documentation describes the walkthrough and legacy test fixtures.
 
 Northstar is a fictional site with an actual server-side account/linking model.
 The default service mode uses real Passli Direct authentication. Registration requests name, phone and email with Passli consent and authorized device delivery. Login and linking request no profile data. It uses a site-specific public subject and verifies the signed assertion

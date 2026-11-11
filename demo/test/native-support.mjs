@@ -1,0 +1,9 @@
+import {algorithmBinding,profileAlgorithms} from '../native-runtime/packages/identity-protocol/algorithm-policy.mjs';
+import {generateKeyPairSync,randomBytes} from 'node:crypto';
+import {publicDescriptor,signProof,digest64} from '../native-runtime/packages/identity-protocol/crypto.node.mjs';
+export const defaultAlgorithmPolicies=()=>Object.fromEntries(['user','rp','passli'].map(role=>[role,{minimumProfile:'classical-128',allowedAlgorithms:Object.values(profileAlgorithms),revision:'1'}]));
+export const random64=n=>randomBytes(n).toString('base64url');
+export function pair(role,type='ed25519') {const k=generateKeyPairSync(type),algorithm=type==='ed25519'?'Ed25519-over-SHA256':type.toUpperCase()+'-pure-over-SHA256';return {...k,key:publicDescriptor(k.publicKey,role,algorithm)};}
+export function transaction(operation='login',overrides={}) {return {protocol:'passli:identity-operations:v1',operation,audience:'https://example.com',requestID:random64(16),nonce:random64(32),issuedAt:1000,expiresAt:1060,context:{algorithmPolicy:algorithmBinding('Ed25519-over-SHA256',defaultAlgorithmPolicies()),site:'https://example.com',origin:'https://example.com',userIdentifier:random64(16),localAccountID:'local-one',bindingID:random64(16),keysetVersion:'1',controlEpoch:'0',sessionBinding:random64(32),completionEndpoint:'https://example.com/auth/complete'},assurance:{schema:'passli:loa:four:v1',requiredLevel:3,achievedLevel:3,factors:['mobile-approval','fresh-biometric'],policyRevision:'1'},parameters:{},...overrides};}
+export const signed=(t,keys)=>({transaction:t,signatures:keys.map(k=>signProof(t,k.privateKey,k.key))});
+export const possession=(t,keys,domain='passli:new-key-possession:v1')=>keys.map(k=>signProof({domain,transactionDigest:digest64(t),role:k.key.role,keyID:k.key.keyID},k.privateKey,k.key));

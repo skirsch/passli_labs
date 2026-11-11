@@ -9,7 +9,7 @@ Public integration documentation and official icon assets for **Login with Passl
 
 The live demo home selects **Northstar**, **TV app login**, **Schwab mutual auth**,
 and **Bank Wire**. Each minisite links back to Passli Demo Home. Northstar is a
-fictional site using real Passli Direct login.
+fictional site using native two-key Passli login. See [native integration](docs/native_northstar.md) for the cutover and deployment requirements.
 Explore first-use account choice, explicit existing-account linking, new-account
 creation, returning login, account settings and unlinking. The site's backend
 verifies Passli assertions and current authorization; Northstar's own passwords
@@ -42,8 +42,7 @@ To hand this to an implementation assistant:
 ## Current status
 
 This is an integration reference, working demo and asset kit, not a universal
-production login SDK. The live demo uses the Direct provider-token compatibility
-profile. It does not implement the unfinished protected threshold-login target.
+production login SDK. Northstar uses the native two-key profile after this release is deployed; the other mini-sites retain their existing integrations. The native account page covers login, linking, notes and unlinking; checkout/profile-sharing remain in the older walkthrough. This is not threshold passkey signing.
 Universal app/PWA discovery and onboarding of additional sites still require work. See the [readiness document](docs/integration_status.md).
 
 The demo shows the Passli login button after detecting the current extension.

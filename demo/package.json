@@ -1,6 +1,6 @@
 {
   "name": "passli-integration-demo",
-  "version": "0.1.35",
+  "version": "0.1.36",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,7 +13,9 @@
   },
   "devDependencies": {
     "esbuild": "0.28.2",
-    "jsqr": "1.4.0",
+    "jsqr": "1.4.0"
+  },
+  "dependencies": {
     "qrcode": "1.5.4"
   }
 }

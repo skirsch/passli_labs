@@ -455,3 +455,8 @@ Final source commit9644bf0e85e811d80e609f0d1ba72f0c03d57f04;30exact-image tests 
 - Outputs: `downloads/extension/passli-extension-0.1.209.zip`, `.sha256`, `release.json`, `README.md`.
 - Results: ZIP CRC, embedded version, checksum and absence of private demo config/default signer verified; 126 extension tests and syntax checks passed upstream. SHA-256: 85aa281a4d2b5b692588db55e4c7014fa816dd36758a652df96442306bbdd2da.
 - Next steps: manual unpacked browser installation acceptance; future extension releases use the upstream packager. No demo server deployment needed.
+
+### 2026-11-11 Native two-key Northstar accounts
+- Replaced real Northstar Direct login/unlink with stable-subject native operations, two pinned signatures and atomic local-account/keyset commits. One account per identity; LoA4 unlink preserves notes/password access and invalidates Passli sessions.
+- node --test demo/test/*.test.mjs: 102 passed, covering four algorithms, cancellation, wrong keys, replay, restart, new browser and native UI. Reviewed runtime copied with scripts/sync-native-runtime.mjs and verified by SHA-256 manifest.
+- Demo036; qrcode now a production dependency. Mandatory configuration/cookie mounts in docs/native_northstar.md. New real page covers identity and notes; checkout/profile/deletion UI remains in walkthrough. Not deployed; live phone acceptance pending. Three-key work remains held.

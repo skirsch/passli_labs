@@ -1,11 +1,11 @@
 # Executable guide
 
-Version: 3
-Updated: 2026-10-28
+Version: 4
+Updated: 2026-11-11
 
 | Command | Purpose | Inputs | Outputs |
 | --- | --- | --- | --- |
-| `cd demo && npm start` | Serve the site; default mode is real Passli Direct authentication | Node >=24.16; `DEMO_MODE`, `DEMO_ORIGIN`, `DEMO_DATABASE`, `HOST`, `PORT` | HTTP site, API and SQLite database |
+| `cd demo && npm start` | Serve the site; default mode is native two-key Northstar authentication (see native_northstar.md for mandatory configuration) | Node >=24.16; native identity configuration and cookie-key paths; `DEMO_MODE`, `DEMO_ORIGIN`, `DEMO_DATABASE`, `HOST`, `PORT` | HTTP site, API and SQLite database |
 | `cd demo && npm test` | Verify HTTP account flows and protocol checks | No credentials; in-memory or temporary SQLite and isolated provider fixtures | Test summary; temporary files removed |
 | `python -m http.server 18765 --bind 127.0.0.1` from repository root | Preview the static button mockup | Python, repository assets | `http://127.0.0.1:18765/examples/login-button.html?preview=1` |
 
@@ -41,3 +41,5 @@ CSRF, isolated Direct callbacks, request consumption and cryptographic tampering
   './demo/server.mjs';createDemo({origin:'http://127.0.0.1:18886'}).listen(18886,'127.0.0.1');"`
   from the repo root. Keep configured origin and listening port identical; this
   walkthrough preview displays QR/consent but cannot approve real identities.
+
+Runtime synchronization: `node demo/scripts/sync-native-runtime.mjs <reviewed-passli-worktree>` updates the public verifier modules and SHA-256 manifest; review the diff and run all demo tests.
