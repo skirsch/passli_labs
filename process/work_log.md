@@ -476,3 +476,10 @@ Synchronized reviewed RP runtime from the owning Passli worktree; three-key regi
 Synced reviewed runtime; reset obsolete Passli links while preserving local account
 notes. Demo39. All 103 tests pass (node --test demo/test/*.test.mjs), including mixed
 link/login/unlink. Next: rollout and public acceptance; phone testing remains.
+
+## 2026-11-20 — Restore Northstar presentation (demo 0.1.40)
+- What we did: restored the original star wordmark, sign-in heading, provider icon/button, spacing, panels, footer and wide account layout around the native page. Retained native IDs, handlers, verifier and account operations; removed obsolete two-key presentation text.
+- Command / executable: npm --prefix demo ci; npm --prefix demo test; local browser preview of nativeNorthstarPage.
+- Outputs: demo 0.1.40; 103 tests passed (including native mixed-algorithm linking/login/unlink and persisted notes); browser confirmed logo and styled sign-in controls. Initial local preview configuration was rejected as expected for HTTP origin/missing assurance; corrected to the existing test fixture authority without production changes.
+- Results: regression originated in cf11f78 replacing the styled shell with bare markup. Existing stylesheet loads correctly; restored its classes instead of replacing authentication.
+- Next steps: Coordinator verifies candidate, publishes frozen source to demo.passli.app, and checks live version and retirement. Phone acceptance remains separate.
