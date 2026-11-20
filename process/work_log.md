@@ -514,3 +514,9 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Commands / outputs: Coordinator scoped patch under ingress lock, nginx-test and same-proxy reload21:53:46.547UTC (13:53:46PST); owned-ticket live probe55,073ms HTTP200 application/json, no HTML, versus prior20,069ms504. Local browser044 click displayed Link/Create immediately. Combined suite109/109 passed before merge c1bede9.
 - Results: proxy fix live on041; styling/current-provider protocol repairs already published. Immediate-choice044 publication awaits frozen043 wire authenticated callback gate. No phone acceptance claimed.
 - Next steps: preserve65s on ingress changes; Coordinator publishes044 after required checks, then verify public choice screen. Retain worktrees through acceptance.
+
+### 2026-11-20 - Native044 candidate authenticated acceptance
+- What we did: independently verified staged044 source c1bede9, container3f1525891266df630facf0eb716d761bd10e2f63905e7b5ffb7c201b0a84bc37 via publisher tunnel55998 with exclusively reserved current rp2 fixture.
+- Command / executable: protected northstar-choice044/acceptance.mjs, normal current provider authentication and signing; browser Continue click.
+- Outputs: passed22:02:55.378UTC (14:02:55PST): decrypted provider data, both choices before handoff, keyless returning login, original account/notes preserved and note write. Browser displayed choice immediately. Fixture counters advanced in place, signed out, no pending/uncertain operation; reservation released.
+- Results / next steps: native044 gate passed; distinct wire callback gate still pending. Coordinator sole publisher; verify public choice after cutover. Physical phone acceptance unobserved.
