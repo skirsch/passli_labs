@@ -500,3 +500,11 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - What we did: Continue with Passli now replaces sign-in with link-existing/create-new choices immediately, before any API request or popup. Existing choice asks for local password before signed linking; new choice records explicit creation intent before the Passli ceremony. No duplicate consent after approval. Preserve041 choice for an already-pending registration. Unexpected non-JSON responses now identify the HTTP failure instead of exposing JSON parser text.
 - Commands/results: focused native/UI tests verify no identity request before choice; live owned-ticket wait probe reproduced HTTP504 HTML at20069ms. Node1 /_integration-demo/ proxy_read_timeout20s conflicts with native handoff55s wait. Coordinator will apply scoped65s proxy read budget and verify a full55s JSON response; no retries or polling loop added.
 - Next steps: merge wire043 and release combined044; browser-click acceptance and long-wait check after publication. Prior041 actual-provider new account, returning login and existing linking all passed by21:48:59Z; synthetic unlink helper lacked new additional factor, so prepared unlink was explicitly cancelled without proof. Retired040 normally45.485s after cutover (15s target missed30.485s), no forced kill.
+
+## 2026-11-20 — Wire approval label and native callback routing
+
+- What we did: show Approve with Passli for both wire states; dispatch exact cookie/state-bound suite callbacks before Northstar rejects obsolete legacy callbacks. Unmatched and replayed callbacks cannot create a suite session.
+- Command / executable: npm ci --prefix demo --ignore-scripts; node --test demo/test/*.test.mjs. Initial test setup lacked qrcode; installed locked dependencies.
+- Outputs: demo0.1.43; 108/108 tests passed, including native Northstar enabled for wire/Schwab callback routing, foreign browser rejection, PKCE and single use.
+- Results: fixes shared callback interception without changing wire signature verification or server amount/approval policy.
+- Next steps: Coordinator authenticated candidate verification and publication; human phone acceptance separate. Receipt 2026-11-20 21:48:05 UTC / 13:48:05 PST.

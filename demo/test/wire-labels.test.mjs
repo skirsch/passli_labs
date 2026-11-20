@@ -41,3 +41,11 @@ test('demo serves the approval-label module required by the bank page',async t=>
  const response=await fetch('http://127.0.0.1:'+server.address().port+'/approval-labels.js');
  assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);assert.match(await response.text(),/export \{approvalLabel\}/);
 });
+
+test('wire button says Approve with Passli before and after identity connection',async()=>{
+ for(const authenticated of [false,true]){
+  const page=await renderWire({authenticated,demo:'wire',csrf:'fixture'});
+  assert.match(page.root.html,new RegExp('data-action="'+(authenticated?'start':'login')+'"[^>]*>Approve with Passli</button>'));
+  assert.doesNotMatch(page.root.html,/Connect with Passli|Approve wire with Passli/);
+ }
+});
