@@ -520,3 +520,11 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Command / executable: protected northstar-choice044/acceptance.mjs, normal current provider authentication and signing; browser Continue click.
 - Outputs: passed22:02:55.378UTC (14:02:55PST): decrypted provider data, both choices before handoff, keyless returning login, original account/notes preserved and note write. Browser displayed choice immediately. Fixture counters advanced in place, signed out, no pending/uncertain operation; reservation released.
 - Results / next steps: native044 gate passed; distinct wire callback gate still pending. Coordinator sole publisher; verify public choice after cutover. Physical phone acceptance unobserved.
+
+## 2026-11-20 — Wire callback live acceptance prerequisite
+
+- What we did: prepared demo043 callback check and attempted normal synthetic-browser setup with Coordinator-reserved current rp1 fixture. No real user or wire was affected.
+- Command / executable: protected wire-callback-acceptance.mjs and wire-pair-browser.mjs; bounded read-only API1051 container logs across five hosts.
+- Outputs: Labs c321629 merged/pushed, 108/108 tests; Coordinator staged043. First sequence request 70183ac0-2fde-40e3-8d1b-4b78730edc8f returned frontend503 after5s but node2 completed200 after34.48s; preserved and reconciled without replay. Subsequent unlock and expected decrypted PII passed.
+- Results: local optional-field serialization corrected; expired initial pairing preserved. Fresh normal legacy QR approval passed, but finish explicitly rejected403 IDENTITY_LEGACY_AUTHORITY_RETIRED. No uncertain request remains; exact pairing material retained protected. No authenticated suite callback or phone approval established.
+- Next steps: Coordinator retains sole publisher; required gate needs current hybrid-pairing browser session (legacy helper incompatible with converted synthetic account).043 remains staged,041 serving at last Coordinator report; related044 includes routing fix. No further fixture writes by this chat.
