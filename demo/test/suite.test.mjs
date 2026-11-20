@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {createDemo} from '../server.mjs';
 import {createPassli} from '../passli.mjs';
+import {pair,defaultAlgorithmPolicies} from './native-support.mjs';
 import {wireDetails} from '../suite.mjs';
 import {verifyDemoSignature} from '../signature.mjs';
 import {canonical} from '../unlink.mjs';
@@ -21,7 +22,8 @@ for(const demo of ['schwab','wire'])test(demo+' Connect preserves real Direct st
   assert.equal(createHash('sha256').update(proof.verifier).digest('base64url'),parameters.get('code_challenge'));
   return {association:{subject:'site-identity'}};
  }};
- const server=createDemo({mode:'real',origin,provider});server.listen(0,'127.0.0.1');await once(server,'listening');
+ const nativeIdentity={provider:{issuer:'https://api.passli.app',roots:[pair('provider','ml-dsa-87').key]},cookieKey:Buffer.alloc(32,7),algorithmPolicies:defaultAlgorithmPolicies,assuranceFor:()=>({schema:'passli:loa:four:v1',requiredLevel:1,achievedLevel:1,factors:['registered-device'],policyRevision:'1'})};
+ const server=createDemo({mode:'real',origin,provider,nativeIdentity});server.listen(0,'127.0.0.1');await once(server,'listening');
  t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));const base='http://127.0.0.1:'+server.address().port;
  const initial=await fetch(base+'/api/demo-suite/state'),cookie=initial.headers.get('set-cookie').split(';')[0],state=await initial.json();
  const response=await fetch(base+'/api/demo-suite/login',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Demo-CSRF':state.csrf,'Content-Type':'application/json'},body:JSON.stringify({demo})});
@@ -30,7 +32,7 @@ for(const demo of ['schwab','wire'])test(demo+' Connect preserves real Direct st
  assert.equal(parameters.get('redirect_uri'),origin+'/auth/passli/callback');assert.equal(parameters.get('code_challenge_method'),'S256');
  for(const key of ['state','nonce','code_challenge'])assert.match(parameters.get(key),/^[A-Za-z0-9_-]{43}$/);
  const callback=base+'/auth/passli/callback?'+new URLSearchParams({state:parameters.get('state'),code:'test-code'});
- await fetch(callback,{redirect:'manual'});assert.equal(completeCalls,0,'another browser cannot consume suite login');
+ assert.equal((await fetch(callback,{redirect:'manual'})).status,410);assert.equal(completeCalls,0,'another browser cannot consume suite login');
  const completed=await fetch(callback,{headers:{Cookie:cookie},redirect:'manual'});assert.equal(completed.headers.get('location'),'/'+demo+'/');assert.equal(completeCalls,1);
  await fetch(callback,{headers:{Cookie:cookie},redirect:'manual'});assert.equal(completeCalls,1,'callback is single use');
 });

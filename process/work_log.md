@@ -495,3 +495,11 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Commands: node demo/scripts/sync-native-runtime.mjs C:/Users/stk/Documents/GitHub/passli; npm --prefix demo test (107/107 passed). Initial sync exposed the old automatic-create expectation; replaced it with explicit-consent tests.
 - Results: current policy request/response, unsigned provider certificate registration, returning keyless login, foreign-browser/direct-completion refusal, cancelled proof, retained notes, all supported signature algorithms and UI choice dispatch covered. API1051 prerequisite recognizes only Northstar's exact cancelled request, not account deletion.
 - Next steps: current-provider candidate acceptance and demo041 publication via Coordinator after API1051. Protected acceptance script/journal outside Git; phone acceptance remains separate.
+
+## 2026-11-20 — Wire approval label and native callback routing
+
+- What we did: show Approve with Passli for both wire states; dispatch exact cookie/state-bound suite callbacks before Northstar rejects obsolete legacy callbacks. Unmatched and replayed callbacks cannot create a suite session.
+- Command / executable: npm ci --prefix demo --ignore-scripts; node --test demo/test/*.test.mjs. Initial test setup lacked qrcode; installed locked dependencies.
+- Outputs: demo0.1.43; 108/108 tests passed, including native Northstar enabled for wire/Schwab callback routing, foreign browser rejection, PKCE and single use.
+- Results: fixes shared callback interception without changing wire signature verification or server amount/approval policy.
+- Next steps: Coordinator authenticated candidate verification and publication; human phone acceptance separate. Receipt 2026-11-20 21:48:05 UTC / 13:48:05 PST.

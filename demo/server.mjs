@@ -63,9 +63,11 @@ export function createDemo({origin='http://127.0.0.1:18766',database=':memory:',
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const path=new URL(req.url,origin).pathname;
+    // Suite callbacks are claimed only by their exact cookie-bound pending state.
+    // Let them complete before Northstar rejects obsolete legacy callbacks.
+    if(await suite(req,res,path))return;
     if(native&&await native.handle(req,res,path))return;
     if(await tv.handle(req,res,path))return;
-    if(await suite(req,res,path))return;
     if(['/northstar','/tv','/schwab','/wire'].includes(path)){res.writeHead(303,{Location:path+'/'});res.end();return;}
     if(mode==='real'&&path==='/api/checkout-release'){
       let visitorId,ownsCheckoutJob=false;
