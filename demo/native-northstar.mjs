@@ -74,7 +74,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
   db.prepare('INSERT INTO ns_contexts VALUES(?,?) ON CONFLICT(id) DO UPDATE SET browser=excluded.browser').run(binding,id);
   return {browser:id,sessionID:w.session?.id||null,localAccountID:a?.id||null,userIdentifier:a?.subject||null};
  }});
- function state(w){const a=validSession(w);let accountChoice=false;if(w.pending&&w.pending.expires>now()){const p=ledger.handoff(w.pending.ticket);accountChoice=p.stage==='proof'&&p.transaction?.operation==='create_account';}return {csrf:w.csrf,account:a?{id:a.id,name:a.name,email:a.email,notes:a.notes,linked:!!a.subject,expires:a.expires}:null,pending:!!w.pending,ticket:w.pending?.ticket||null,accountChoice,setup:w.setup||null,protocol:'passli:identity-operations:v1'};}
+ function state(w){const a=validSession(w);let accountChoice=false;if(w.pending&&w.pending.expires>now()){const p=ledger.handoff(w.pending.ticket);accountChoice=p.stage==='proof'&&p.transaction?.operation==='create_account';}return {csrf:w.csrf,account:a?{id:a.id,name:a.name,email:a.email,notes:a.notes,linked:!!a.subject,expires:a.expires}:null,pending:!!w.pending,pendingOperation:w.pending?.operation||null,ticket:w.pending?.ticket||null,accountChoice,setup:w.setup||null,protocol:'passli:identity-operations:v1'};}
  function expireAccounts(){
   const expired=db.prepare('SELECT id,value FROM ns_accounts').all().filter(r=>JSON.parse(r.value).expires<=now());
   if(!expired.length)return;
