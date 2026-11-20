@@ -71,6 +71,16 @@ to enable Northstar. Publish compatible API/mobile/browser origin support before
 exposing the native page. The dedicated native tables share the demo SQLite file;
 other demonstrations and old account tables are not deleted.
 
+The real demo ingress must allow the native handoff's 55-second wait to finish.
+Keep `proxy_read_timeout 65s;` in the exact `location ^~ /_integration-demo/`
+block when publishing or regenerating Nginx configuration. A 20-second read
+timeout produces an HTML 504 before the endpoint returns its JSON waiting result.
+This is an idle-read budget for the existing wait, not a retry or polling policy.
+Preserve sibling locations and upstream selection; update under the publisher's
+ingress lock, run `nginx -t`, and reload the same proxy only after validation.
+Verify with a disposable cookie-bound pending handoff: its status wait must return
+HTTP 200 JSON after approximately 55 seconds, then cancel that exact request.
+
 ## Verification and source synchronization
 
 Run `cd demo && npm test`. Native HTTP tests perform link, login and unlink with

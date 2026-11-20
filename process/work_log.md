@@ -508,3 +508,9 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Outputs: demo0.1.43; 108/108 tests passed, including native Northstar enabled for wire/Schwab callback routing, foreign browser rejection, PKCE and single use.
 - Results: fixes shared callback interception without changing wire signature verification or server amount/approval policy.
 - Next steps: Coordinator authenticated candidate verification and publication; human phone acceptance separate. Receipt 2026-11-20 21:48:05 UTC / 13:48:05 PST.
+
+### 2026-11-20 - Live ingress correction and immediate-choice verification
+- What we did: documented real-demo ingress read budget and regeneration requirement:65s for existing55s native wait. No repository generator for this operator-managed route found in Passli scripts or Passli Labs.
+- Commands / outputs: Coordinator scoped patch under ingress lock, nginx-test and same-proxy reload21:53:46.547UTC (13:53:46PST); owned-ticket live probe55,073ms HTTP200 application/json, no HTML, versus prior20,069ms504. Local browser044 click displayed Link/Create immediately. Combined suite109/109 passed before merge c1bede9.
+- Results: proxy fix live on041; styling/current-provider protocol repairs already published. Immediate-choice044 publication awaits frozen043 wire authenticated callback gate. No phone acceptance claimed.
+- Next steps: preserve65s on ingress changes; Coordinator publishes044 after required checks, then verify public choice screen. Retain worktrees through acceptance.
