@@ -107,8 +107,10 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
     const email=body.email.trim().toLowerCase();let target=db.prepare('SELECT value FROM ns_accounts').all().map(r=>JSON.parse(r.value)).find(a=>a.email===email&&a.expires>now());
     if(!target){target={id:random(),name:email,email,notes:'',subject:null,created:now(),expires:now()+lifetime};write('ns_accounts',target.id,target);}
     w.session={id:random(),accountID:target.id,method:'password'};
+   }else if(body.action==='choose-new'){
+    if(a||w.pending)fail();w.setup='create-new';
    }else if(body.action==='choose-existing'){
-    if(a||!w.pending||!state(w).accountChoice)fail();const pending=ledger.handoff(w.pending.ticket);operations.cancelHandoff(w.pending.ticket,pending.sessionBinding);w.pending=null;w.setup='link-existing';
+    if(a)fail();if(w.pending){if(!state(w).accountChoice)fail();const pending=ledger.handoff(w.pending.ticket);operations.cancelHandoff(w.pending.ticket,pending.sessionBinding);w.pending=null;}w.setup='link-existing';
    }else if(body.action==='notes-save'){if(!a||typeof body.notes!=='string'||body.notes.length>2000)fail();a.notes=body.notes;write('ns_accounts',a.id,a);}
    else if(['logout','cancel'].includes(body.action)){
     if(w.pending){try{const p=ledger.handoff(w.pending.ticket);if(p.stage!=='complete')operations.cancelHandoff(w.pending.ticket,p.sessionBinding);}catch(e){if(e.code!=='IDENTITY_HANDOFF_EXPIRED')throw e;}w.pending=null;}

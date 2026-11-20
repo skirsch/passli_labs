@@ -45,6 +45,14 @@ test('existing-account choice cancels registration and requires a fresh link to 
  await c.action('password-login',{email:'existing-choice@example.test',password:'demo'});const link=await f.begin(c,'link',subject,user,cloud,{registration:true,policyTicket:'current-policy-ticket'});await f.finish(c,link,user,cloud);
  const result=await c.state();assert.equal(result.account.id,old.account.id);assert.equal(result.account.notes,'Keep existing work');assert.equal(result.account.linked,true);assert.equal(result.setup,null);
 });
+
+test('initial choices are recorded before any Passli handoff and do not create an account',async t=>{
+ const f=await fixture(t),c=f.client();await c.state();
+ let value=await c.action('choose-existing');assert.equal(value.setup,'link-existing');assert.equal(value.pending,false);assert.equal(value.account,null);
+ await c.action('cancel');value=await c.action('choose-new');assert.equal(value.setup,'create-new');assert.equal(value.pending,false);assert.equal(value.account,null);
+ const user=pair('user'),cloud=pair('cloud'),h=await f.begin(c,'discover',random64(16),user,cloud);await f.finish(c,h,user,cloud);assert.equal((await c.state()).setup,null);
+ assert.equal((await c.request('/api/northstar/action',{action:'choose-existing'})).status,409,'signed-in accounts cannot select a different setup');
+});
 for(const algorithm of ['ed25519','ml-dsa-44','ml-dsa-65','ml-dsa-87','mixed'])test('native Northstar link/login/unlink with '+algorithm,async t=>{
  const f=await fixture(t),c=f.client(),other=f.client(),user=pair('user',algorithm==='mixed'?'ed25519':algorithm),cloud=pair('cloud',algorithm==='mixed'?'ml-dsa-65':algorithm),subject=random64(16);await c.state();
  const initial=await c.action('password-login',{email:'native@example.test',password:'demo'}),id=initial.account.id;await c.action('notes-save',{notes:'Preserve this note'});

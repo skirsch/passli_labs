@@ -7,7 +7,7 @@ cutover; local accounts, notes and password access remain.
 
 # Native Northstar account integration
 
-Version: 3
+Version: 4
 Date: 2026-11-20
 
 Northstar's real account page uses `passli:identity-operations:v1`: a stable
@@ -15,14 +15,13 @@ Northstar's real account page uses `passli:identity-operations:v1`: a stable
 Passli identity links to one Northstar account. The walkthrough remains simulated;
 TV, Schwab and Bank Wire retain their separate existing integrations.
 
-First-use Continue with Passli now obtains the current provider enrollment proof,
-then offers **Link to my existing account** or **Create new account**. No account
-is created until the same cookie-bound Northstar browser explicitly chooses Create.
+Continue with Passli immediately offers **Link to my existing account** or **Create new account**, before starting any provider request or popup. The selected
+path then obtains the current provider proof. No account is created until the same cookie-bound Northstar browser explicitly chooses Create.
 Choosing an existing account cancels the unused registration, authenticates the
 local account with its fictional password, then starts a fresh signed link bound
 to that exact local session. API1051 recognizes Northstar's authoritative cancelled
 request receipt so the pending registration cannot block that fresh link.
-Returning identities use the current keyless proposal and sign in directly.
+Returning identities use the current keyless proposal within the selected Passli path.
 
 Demo041 synchronizes the vendored runtime from Passli `9463958a`, including current
 key slots, policy-ticket scope, registration markers and provider-authorized initial
