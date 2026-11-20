@@ -7,13 +7,28 @@ cutover; local accounts, notes and password access remain.
 
 # Native Northstar account integration
 
-Version: 2
-Date: 2026-11-11
+Version: 3
+Date: 2026-11-20
 
 Northstar's real account page uses `passli:identity-operations:v1`: a stable
-128-bit site subject and two pinned keys, one user key and one cloud key. One
+128-bit site subject and three registered keys (user, cloud and independent). One
 Passli identity links to one Northstar account. The walkthrough remains simulated;
 TV, Schwab and Bank Wire retain their separate existing integrations.
+
+First-use Continue with Passli now obtains the current provider enrollment proof,
+then offers **Link to my existing account** or **Create new account**. No account
+is created until the same cookie-bound Northstar browser explicitly chooses Create.
+Choosing an existing account cancels the unused registration, authenticates the
+local account with its fictional password, then starts a fresh signed link bound
+to that exact local session. API1051 recognizes Northstar's authoritative cancelled
+request receipt so the pending registration cannot block that fresh link.
+Returning identities use the current keyless proposal and sign in directly.
+
+Demo041 synchronizes the vendored runtime from Passli `9463958a`, including current
+key slots, policy-ticket scope, registration markers and provider-authorized initial
+key registration. The native runtime manifest binds every copied module. Test the
+current browser wire formats and the actual provider as well as fictional password
+access: the latter did not exercise the obsolete protocol in demo040.
 
 The native page supports fictional password login, linking an existing account,
 first-use Passli account creation, returning login, saved notes and unlinking.
@@ -23,18 +38,18 @@ Northstar password mechanism, not a Passli recovery bypass. Unsaved note edits
 survive state refreshes, and Save captures the draft before rendering busy state.
 It does not send users through the old Direct login/unlink continuation. The old
 Northstar account API and callback return 410 after native activation, so they
-cannot bypass the two-key verifier. There is no import of old demo associations.
+cannot bypass the native verifier. There is no import of old demo associations.
 The older checkout/profile-sharing and deletion UI remain in the walkthrough;
 they are not implemented on the new native account page and must not be advertised
 as native signed operations.
 
 Linking obtains the local account ID from an authenticated Northstar session.
 The phone reviews the link operation and account ID, and signs the exact
-transaction. Completion validates the two signatures and provider enrollment
+transaction. Completion validates the required signatures and provider enrollment
 certificate, browser context, current policy, nonce, expiry and stored keyset.
 The local session is rechecked inside SQLite's transaction. A failed local check
 rolls back both the cryptographic receipt and account writes. Unlink requires
-approval level 4, both pinned signatures, and the exact account/binding. It clears
+approval level 4, the required registered signatures, and the exact account/binding. It clears
 the keyset and invalidates Passli sessions while retaining notes and password
 access. Old receipts cannot restore an unlinked binding. Site expiry still removes
 demo accounts and links 30 minutes after creation; activity does not extend it.

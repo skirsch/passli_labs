@@ -1,14 +1,14 @@
 import {canonical,fields,reject,revision,site} from './encoding.mjs';
 
 export const registeredSignerRoles=Object.freeze(['user','cloud','independent']);
-const count=n=>{if(n!==2&&n!==3)reject('IDENTITY_SIGNER_POLICY_INVALID');};
+const count=n=>{if(n!==1&&n!==2&&n!==3)reject('IDENTITY_SIGNER_POLICY_INVALID');};
 export function validateSignerMinimum(p){
  fields(p,['minimum','revision']);count(p.minimum);revision(p.revision);return p;
 }
 export function signerPolicy(operation,{user,rp}){
  validateSignerMinimum(user);validateSignerMinimum(rp);
- // Unlink must not provide a two-signature bypass around protected rekeying.
- const required=['create_account','link','rekey','unlink','resume'].includes(operation)?3:Math.max(user.minimum,rp.minimum);
+ // The RP selects the login count. Key transitions retain all three signatures.
+ const required=['create_account','link','rekey','unlink','resume'].includes(operation)?3:operation==='login'?rp.minimum:Math.max(user.minimum,rp.minimum);
  return {user:{...user},rp:{...rp},requiredRoles:registeredSignerRoles.slice(0,required)};
 }
 export function validateSignerPolicy(p,operation){

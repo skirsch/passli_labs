@@ -4,8 +4,9 @@ import {digest64,signProof,verifyProof,validateDescriptor} from './crypto.node.m
 
 function enrollment(t){validateTransaction(t);if(!['create_account','link'].includes(t.operation))reject('IDENTITY_ENROLLMENT_CERTIFICATE_INVALID');}
 function root(key){validateDescriptor(key,'provider');if(key.algorithm!=='ML-DSA-87-pure-over-SHA256')reject('IDENTITY_ENROLLMENT_ROOT_INVALID');}
-// Issuer calls this only AFTER current control, A_RP, device and policy checks.
-// This authenticates initial cloud-key origin; it never replaces either RP proof.
+// Issuer calls this only after current device/account and policy authorization.
+// For create_account this authorizes first registration without new-key proofs.
+// Linking an existing local account still requires its transaction signatures.
 export function issueEnrollmentCertificate(transaction,{issuer,key,privateKey,now}){
   enrollment(transaction);site(issuer);root(key);
   if(!Number.isSafeInteger(now)||now<transaction.issuedAt||now>=transaction.expiresAt)reject('IDENTITY_EXPIRED');

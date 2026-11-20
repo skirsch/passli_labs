@@ -31,7 +31,12 @@ export function verifyRPTransition(packet,{expected,binding,site:registeredSite,
   if(!['suspend','unlink'].includes(t.operation))assertCurrentAlgorithmPolicy(c.algorithmPolicy,algorithmPolicies);
   if(c.signerPolicy&&!enroll&&canonical(binding.independentProvider)!==canonical(c.independentProvider))reject('IDENTITY_BINDING_CHANGED');
   const required=c.signerPolicy?keys.filter(k=>c.signerPolicy.requiredRoles.includes(k.role)):keys;
-  verifyTransactionSignatures(packet.response,{expected:t,keys:required,now});
+  if(t.operation==='create_account'&&Array.isArray(packet.response?.signatures)&&packet.response.signatures.length===0){
+    fields(packet.response,['transaction','signatures']);
+    if(canonical(packet.response.transaction)!==canonical(t))reject('IDENTITY_TRANSACTION_MISMATCH');
+    // The already verified provider certificate authorizes this exact initial
+    // keyset. Possession is proved at login, not required to store public keys.
+  }else verifyTransactionSignatures(packet.response,{expected:t,keys:required,now});
   if(!Array.isArray(packet.newKeyProofs))reject();
   const next=enroll?{...copy(c),keys:copy(keys),state:'active',sessionGeneration:'1'}:copy(binding);
   delete next.sessionBinding;delete next.completionEndpoint;

@@ -30,7 +30,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
    if(!a||!w.session||w.session.id!==p.sessionID||w.session.accountID!==c.localAccountID)fail();
   }
   if(t.operation==='create_account'){
-   if(a)fail();a={id:c.localAccountID,name:'Passli member',email:'passli-'+c.localAccountID.toLowerCase()+'@example.test',notes:'',subject:null,created:now(),expires:now()+lifetime};
+   if(a||p.createAccount!==true)fail();a={id:c.localAccountID,name:'Passli member',email:'passli-'+c.localAccountID.toLowerCase()+'@example.test',notes:'',subject:null,created:now(),expires:now()+lifetime};
   }else if(!a)fail();
   if(['create_account','link'].includes(t.operation)){if(a.subject)fail();a.subject=c.userIdentifier;a.bindingID=c.bindingID;}
   else if(a.subject!==c.userIdentifier||a.bindingID!==c.bindingID)fail();
@@ -40,7 +40,7 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
    // Northstar password access and account data; never revoke another account.
    if(w.session.method==='passli')w.session=null;
   }else if(result.sessionToken){w.session={id:random(),accountID:a.id,method:'passli',token:result.sessionToken};}
-  w.pending=null;write('ns_accounts',a.id,a);write('ns_browsers',id,w);
+  w.pending=null;w.setup=null;write('ns_accounts',a.id,a);write('ns_browsers',id,w);
  }});
  // Retire only links to obsolete demo bindings already retired by the ledger.
  if(settings.requireThreeKeys){
@@ -54,19 +54,27 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
  function localLink(s){const w=s&&read('ns_browsers',s.browser),a=validSession(w);if(!a||w.session.id!==s.sessionID||a.id!==s.localAccountID||a.subject)fail();return a.id;}
  const base=createNativeRPOperations({...settings,ledger,origin,now:()=>Math.floor(now()/1000),authorizeLocalLink:localLink});
  operations=policy?policy.bind(ledger,base):base;
- const start=operations.startHandoff;
+ const start=operations.startHandoff,finish=operations.finishHandoff;
  operations={...operations,startHandoff(binding,input,s){
   const w=s&&read('ns_browsers',s.browser),operation=input.operation||'discover';if(!w||w.pending)fail();
   if(operation==='discover'){if(validSession(w))fail();}
   else if(!['link','unlink'].includes(operation)||!validSession(w))fail();
   const result=start(binding,operation==='unlink'?{...input,requestedLevel:4}:input,s);w.pending={ticket:result.ticket,operation,expires:result.expires*1000,sessionID:w.session?.id||null};write('ns_browsers',s.browser,w);return result;
+ },async finishHandoff(ticket,binding,consent){
+  const pending=ledger.handoff(ticket,binding);
+  if(pending.transaction?.operation==='create_account'&&pending.stage!=='complete'){
+   const id=db.prepare('SELECT browser FROM ns_contexts WHERE id=?').get(binding)?.browser,w=id&&read('ns_browsers',id);
+   if(consent?.createAccount!==true||pending.stage!=='proof'||!w?.pending||w.pending.ticket!==ticket)fail();
+   w.pending.createAccount=true;write('ns_browsers',id,w);
+  }
+  return finish(ticket,binding,consent);
  }};
  const http=createNativeRPHttp({origin,cookieKey:config.cookieKey,operations,localSessionFor(req,binding){
   const id=browser(req),w=id&&read('ns_browsers',id);if(!w)fail();const a=validSession(w);
   db.prepare('INSERT INTO ns_contexts VALUES(?,?) ON CONFLICT(id) DO UPDATE SET browser=excluded.browser').run(binding,id);
   return {browser:id,sessionID:w.session?.id||null,localAccountID:a?.id||null,userIdentifier:a?.subject||null};
  }});
- function state(w){const a=validSession(w);return {csrf:w.csrf,account:a?{id:a.id,name:a.name,email:a.email,notes:a.notes,linked:!!a.subject,expires:a.expires}:null,pending:!!w.pending,ticket:w.pending?.ticket||null,protocol:'passli:identity-operations:v1'};}
+ function state(w){const a=validSession(w);let accountChoice=false;if(w.pending&&w.pending.expires>now()){const p=ledger.handoff(w.pending.ticket);accountChoice=p.stage==='proof'&&p.transaction?.operation==='create_account';}return {csrf:w.csrf,account:a?{id:a.id,name:a.name,email:a.email,notes:a.notes,linked:!!a.subject,expires:a.expires}:null,pending:!!w.pending,ticket:w.pending?.ticket||null,accountChoice,setup:w.setup||null,protocol:'passli:identity-operations:v1'};}
  function expireAccounts(){
   const expired=db.prepare('SELECT id,value FROM ns_accounts').all().filter(r=>JSON.parse(r.value).expires<=now());
   if(!expired.length)return;
@@ -99,10 +107,12 @@ export function createNativeNorthstar({db,origin,config,version,now=Date.now}){
     const email=body.email.trim().toLowerCase();let target=db.prepare('SELECT value FROM ns_accounts').all().map(r=>JSON.parse(r.value)).find(a=>a.email===email&&a.expires>now());
     if(!target){target={id:random(),name:email,email,notes:'',subject:null,created:now(),expires:now()+lifetime};write('ns_accounts',target.id,target);}
     w.session={id:random(),accountID:target.id,method:'password'};
+   }else if(body.action==='choose-existing'){
+    if(a||!w.pending||!state(w).accountChoice)fail();const pending=ledger.handoff(w.pending.ticket);operations.cancelHandoff(w.pending.ticket,pending.sessionBinding);w.pending=null;w.setup='link-existing';
    }else if(body.action==='notes-save'){if(!a||typeof body.notes!=='string'||body.notes.length>2000)fail();a.notes=body.notes;write('ns_accounts',a.id,a);}
    else if(['logout','cancel'].includes(body.action)){
     if(w.pending){try{const p=ledger.handoff(w.pending.ticket);if(p.stage!=='complete')operations.cancelHandoff(w.pending.ticket,p.sessionBinding);}catch(e){if(e.code!=='IDENTITY_HANDOFF_EXPIRED')throw e;}w.pending=null;}
-    if(body.action==='logout'){if(w.session?.method==='passli')ledger.logout(w.session.token);w.session=null;}
+    w.setup=null;if(body.action==='logout'){if(w.session?.method==='passli')ledger.logout(w.session.token);w.session=null;}
    }else fail();
    write('ns_browsers',id,w);json(res,200,state(w));return true;
   }catch(error){json(res,409,{error:error.code||'Northstar request was not completed. Check the account state.'});return true;}

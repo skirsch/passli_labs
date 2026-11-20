@@ -9,17 +9,42 @@ import {join} from 'node:path';
 
 const thirds=new Map();const thirdFor=user=>{if(!thirds.has(user.key.keyID))thirds.set(user.key.keyID,pair('independent',user.privateKey.asymmetricKeyType));return thirds.get(user.key.keyID);};
 const origin='https://demo.passli.app',issuer='https://api.passli.app';
-async function fixture(t,{root=pair('provider','ml-dsa-87'),database=':memory:'}={}){
+async function fixture(t,{root=pair('provider','ml-dsa-87'),database=':memory:',currentPolicy=false}={}){
  const assuranceFor=op=>({schema:'passli:loa:four:v1',requiredLevel:op==='unlink'?4:1,achievedLevel:op==='unlink'?4:1,factors:op==='unlink'?['mobile-approval','fresh-biometric','security-key']:['registered-device'],policyRevision:'1'});
- const server=createDemo({origin,mode:'real',database,nativeIdentity:{path:database,provider:{issuer,roots:[root.key]},cookieKey:Buffer.alloc(32,7),algorithmPolicies:defaultAlgorithmPolicies,assuranceFor,requireThreeKeys:true,signerPolicyFor:()=>({user:{minimum:2,revision:'0'},rp:{minimum:2,revision:'0'}})}});
+ const policyProvider=currentPolicy?{providerOrigin:issuer,rpPolicy:defaultAlgorithmPolicies().rp,rpAssuranceFor:assuranceFor,fetch:async(url,options)=>{const input=JSON.parse(options.body);assert.equal(input.site,origin);assert.equal(input.ticket,'current-policy-ticket');assert.equal(Object.hasOwn(input,'cloudKeyID'),false);return new Response(JSON.stringify({site:origin,userIdentifier:input.userIdentifier,policies:defaultAlgorithmPolicies(),assurance:Object.fromEntries(['login','create_account','link','unlink','rekey','resume'].map(op=>[op,assuranceFor(op)])),signers:{minimum:2,revision:'0'}}));}}:undefined;
+ const server=createDemo({origin,mode:'real',database,nativeIdentity:{path:database,provider:{issuer,roots:[root.key]},cookieKey:Buffer.alloc(32,7),algorithmPolicies:defaultAlgorithmPolicies,assuranceFor,requireThreeKeys:true,signerPolicyFor:()=>({user:{minimum:2,revision:'0'},rp:{minimum:2,revision:'0'}}),...(policyProvider?{policyProvider}:{})}});
  const close=async()=>{if(server.listening){server.closeAllConnections();await new Promise(r=>server.close(r));}};
  await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(close);const base='http://127.0.0.1:'+server.address().port;
  function client(){const cookies=new Map();let csrf;return {async request(path,body){const response=await fetch(base+path,{method:body?'POST':'GET',headers:{Cookie:[...cookies].map(([k,v])=>k+'='+v).join('; '),...(body?{'Content-Type':'application/json',Origin:origin,'X-Demo-CSRF':csrf||''}:{})},...(body?{body:JSON.stringify(body)}:{})});for(const value of response.headers.getSetCookie()){const [k,v]=value.split(';')[0].split('=');cookies.set(k,v);}const data=await response.json();if(data.csrf)csrf=data.csrf;return {status:response.status,data};},async state(){return (await this.request('/api/northstar/state')).data;},async action(action,extra={}){const result=await this.request('/api/northstar/action',{action,...extra});assert.equal(result.status,200,JSON.stringify(result.data));return result.data;}};}
- async function begin(c,operation,subject,user,cloud){await c.request('/api/identity/context');const h=await c.request('/api/identity/handoff',{operation});assert.equal(h.status,200,JSON.stringify(h.data));const path='/api/identity/handoff/'+h.data.ticket;const p=await c.request(path+'/propose',{userIdentifier:subject,pub1:user.key,pub2:cloud.key,pub3:thirdFor(user).key,independentProvider:{identity:issuer,uri:issuer,seedVersion:'0'}});return {path,proposal:p,t:p.data.transaction};}
- function packet(t,user,cloud){return {response:signed(t,[user,cloud,...(t.context.signerPolicy.requiredRoles.includes('independent')?[thirdFor(user)]:[])]),newKeyProofs:[],enrollmentCertificate:['link','create_account'].includes(t.operation)?issueEnrollmentCertificate(t,{issuer,key:root.key,privateKey:root.privateKey,now:Math.floor(Date.now()/1000)}):null};}
- async function finish(c,h,user,cloud){assert.equal(h.proposal.status,200,JSON.stringify(h.proposal.data));assert.equal((await c.request(h.path+'/submit',packet(h.t,user,cloud))).status,200);const r=await c.request(h.path+'/finish',{});assert.equal(r.status,200,JSON.stringify(r.data));return r;}
+ async function begin(c,operation,subject,user,cloud,extra={}){await c.request('/api/identity/context');const h=await c.request('/api/identity/handoff',{operation});assert.equal(h.status,200,JSON.stringify(h.data));const path='/api/identity/handoff/'+h.data.ticket;const p=await c.request(path+'/propose',{userIdentifier:subject,pub1:user.key,pub2:cloud.key,pub3:thirdFor(user).key,independentProvider:{identity:issuer,uri:issuer,seedVersion:'0'},...extra});return {path,proposal:p,t:p.data.transaction};}
+ function packet(t,user,cloud){return {response:t.operation==='create_account'?{transaction:t,signatures:[]}:signed(t,[user,cloud,...(t.context.signerPolicy.requiredRoles.includes('independent')?[thirdFor(user)]:[])]),newKeyProofs:[],enrollmentCertificate:['link','create_account'].includes(t.operation)?issueEnrollmentCertificate(t,{issuer,key:root.key,privateKey:root.privateKey,now:Math.floor(Date.now()/1000)}):null};}
+ async function finish(c,h,user,cloud){assert.equal(h.proposal.status,200,JSON.stringify(h.proposal.data));assert.equal((await c.request(h.path+'/submit',packet(h.t,user,cloud))).status,200);const r=await c.request(h.path+'/finish',h.t.operation==='create_account'?{createAccount:true}:{});assert.equal(r.status,200,JSON.stringify(r.data));return r;}
  return {client,begin,packet,finish,close};
 }
+
+test('current browser registration waits for account choice and consent; returning login omits keys',async t=>{
+ const f=await fixture(t,{currentPolicy:true}),c=f.client(),user=pair('user'),cloud=pair('cloud'),subject=random64(16);await c.state();
+ const h=await f.begin(c,'discover',subject,user,cloud,{registration:true,policyTicket:'current-policy-ticket'});assert.equal(h.proposal.status,200,JSON.stringify(h.proposal.data));
+ assert.equal((await c.request(h.path+'/submit',f.packet(h.t,user,cloud))).status,200);
+ assert.equal((await c.state()).account,null);assert.equal((await c.state()).accountChoice,true);
+ assert.equal((await c.request(h.path+'/finish',{})).status,400,'no automatic registration');
+ assert.equal((await c.request('/api/identity/complete',f.packet(h.t,user,cloud))).status,400,'direct completion cannot bypass choice');
+ const foreign=f.client();await foreign.state();await foreign.request('/api/identity/context');assert.equal((await foreign.request(h.path+'/finish',{createAccount:true})).status,400);
+ assert.equal((await c.request(h.path+'/finish',{createAccount:true})).status,200);const id=(await c.state()).account.id;
+ await c.action('logout');const start=await c.request('/api/identity/handoff',{operation:'discover'}),path='/api/identity/handoff/'+start.data.ticket;
+ const proposal=await c.request(path+'/propose',{userIdentifier:subject,policyTicket:'current-policy-ticket'});assert.equal(proposal.status,200,JSON.stringify(proposal.data));assert.equal(proposal.data.transaction.operation,'login');
+ assert.equal((await c.request(path+'/submit',f.packet(proposal.data.transaction,user,cloud))).status,200);assert.equal((await c.request(path+'/finish',{})).status,200);assert.equal((await c.state()).account.id,id);assert.equal((await c.state()).accountChoice,false);
+});
+
+test('existing-account choice cancels registration and requires a fresh link to authenticated local account',async t=>{
+ const f=await fixture(t,{currentPolicy:true}),c=f.client(),user=pair('user'),cloud=pair('cloud'),subject=random64(16);await c.state();
+ const old=await c.action('password-login',{email:'existing-choice@example.test',password:'demo'});await c.action('notes-save',{notes:'Keep existing work'});await c.action('logout');
+ const h=await f.begin(c,'discover',subject,user,cloud,{registration:true,policyTicket:'current-policy-ticket'});assert.equal(h.proposal.status,200);assert.equal((await c.request(h.path+'/submit',f.packet(h.t,user,cloud))).status,200);
+ assert.equal((await c.action('choose-existing')).setup,'link-existing');assert.equal((await c.state()).account,null);
+ assert.equal((await c.request(h.path+'/finish',{createAccount:true})).status,400);assert.equal((await c.request('/api/identity/complete',f.packet(h.t,user,cloud))).status,400);
+ await c.action('password-login',{email:'existing-choice@example.test',password:'demo'});const link=await f.begin(c,'link',subject,user,cloud,{registration:true,policyTicket:'current-policy-ticket'});await f.finish(c,link,user,cloud);
+ const result=await c.state();assert.equal(result.account.id,old.account.id);assert.equal(result.account.notes,'Keep existing work');assert.equal(result.account.linked,true);assert.equal(result.setup,null);
+});
 for(const algorithm of ['ed25519','ml-dsa-44','ml-dsa-65','ml-dsa-87','mixed'])test('native Northstar link/login/unlink with '+algorithm,async t=>{
  const f=await fixture(t),c=f.client(),other=f.client(),user=pair('user',algorithm==='mixed'?'ed25519':algorithm),cloud=pair('cloud',algorithm==='mixed'?'ml-dsa-65':algorithm),subject=random64(16);await c.state();
  const initial=await c.action('password-login',{email:'native@example.test',password:'demo'}),id=initial.account.id;await c.action('notes-save',{notes:'Preserve this note'});

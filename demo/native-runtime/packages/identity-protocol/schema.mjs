@@ -1,4 +1,5 @@
 import {roleAlgorithm} from './algorithm-policy.mjs';
+import {isRPKey,descriptorFields} from './key-slots.mjs';
 import {validateSignerPolicy,validateIndependentProvider,validateSignerMinimum} from './signer-policy.mjs';
 import {accountID,canonical,decode64,fields,reject,revision,site,text,nextRevision} from './encoding.mjs';
 import {validateAlgorithmBinding,validateAlgorithmPolicy} from './algorithm-policy.mjs';
@@ -7,9 +8,9 @@ export const protocol='passli:identity-operations:v1';
 export const algorithms=Object.freeze({'Ed25519-over-SHA256':32,'ML-DSA-44-pure-over-SHA256':1312,'ML-DSA-65-pure-over-SHA256':1952,'ML-DSA-87-pure-over-SHA256':2592});
 const nonempty=v=>{text(v,1024);if(!v)reject();};
 const b16=v=>decode64(v,16),b32=v=>decode64(v,32);
-export function descriptor(value,role){fields(value,['role','algorithm','publicKey','keyID']);if(value.role!==role||!Object.hasOwn(algorithms,value.algorithm))reject();decode64(value.publicKey,algorithms[value.algorithm]);b32(value.keyID);return value;}
-const controlKeys=value=>{if(!Array.isArray(value)||value.length!==3)reject();value.forEach((k,i)=>{descriptor(k,'control'+(i+1));if(k.algorithm!=='ML-DSA-87-pure-over-SHA256')reject();});if(new Set(value.map(k=>k.publicKey)).size!==3)reject();};
-const threshold=v=>{if(v!==2)reject();};
+export function descriptor(value,role){fields(value,descriptorFields(value));if(value.role!==role||!Object.hasOwn(algorithms,value.algorithm))reject();decode64(value.publicKey,algorithms[value.algorithm]);if(!isRPKey(value))b32(value.keyID);return value;}
+const controlKeys=value=>{if(!Array.isArray(value)||value.length!==1)reject();value.forEach((k,i)=>{descriptor(k,'control'+(i+1));if(k.algorithm!=='ML-DSA-87-pure-over-SHA256')reject();});if(new Set(value.map(k=>k.publicKey)).size!==1)reject();};
+const threshold=v=>{if(v!==1)reject();};
 const user=v=>descriptor(v,'user'),cloud=v=>descriptor(v,'cloud');
 const rules={
   login:{rp:true,params:{}},
@@ -52,7 +53,7 @@ export const factorPolicyOperations=Object.freeze(['account_create','control_key
 export function defaultIdentityAssurance(operation){
   if(!factorPolicyOperations.includes(operation))reject('IDENTITY_OPERATION_UNSUPPORTED');
   if(['login','create_account','link'].includes(operation))return {schema:'passli:loa:four:v1',requiredLevel:1,achievedLevel:1,factors:['registered-device'],policyRevision:'0'};
-  const recoveryControl=['device_add','policy_update','signing_lock','signing_unlock','security_key_add','security_key_remove'].includes(operation),level=recoveryControl?3:4;
+  const recoveryControl=['account_create','device_add','policy_update','signing_lock','signing_unlock','security_key_add','security_key_remove'].includes(operation),level=recoveryControl?3:4;
   return {schema:'passli:loa:four:v1',requiredLevel:level,achievedLevel:level,factors:recoveryControl?['mobile-approval','fresh-biometric']:['mobile-approval','fresh-biometric','security-key'],policyRevision:'0'};
 }
 export function validateIdentityPolicy(value){
@@ -75,14 +76,15 @@ export function validateTransaction(t,{schemas={}}={}){
   if(t.expiresAt<=t.issuedAt||t.expiresAt-t.issuedAt>(r.ttl||60))reject('IDENTITY_EXPIRY_INVALID');
   const c=t.context;
   if(r.rp){
-    fields(c,['site','origin','userIdentifier','localAccountID','bindingID','keysetVersion','controlEpoch','sessionBinding','completionEndpoint','algorithmPolicy',...(c.signerPolicy?['signerPolicy','independentProvider']:[])]);if(c.signerPolicy){validateSignerPolicy(c.signerPolicy,t.operation);validateIndependentProvider(c.independentProvider);}validateAlgorithmBinding(c.algorithmPolicy);site(c.site);site(c.origin);if(t.audience!==c.origin)reject();b16(c.userIdentifier);nonempty(c.localAccountID);b16(c.bindingID);revision(c.keysetVersion);revision(c.controlEpoch);if(c.keysetVersion==='0')reject();
+    fields(c,['site','origin','userIdentifier','localAccountID','bindingID','keysetVersion','controlEpoch','sessionBinding','completionEndpoint','algorithmPolicy',...(c.personalInformationDigest?['personalInformationDigest']:[]),...(c.signerPolicy?['signerPolicy','independentProvider']:[])]);if(c.signerPolicy){validateSignerPolicy(c.signerPolicy,t.operation);validateIndependentProvider(c.independentProvider);}validateAlgorithmBinding(c.algorithmPolicy);if(c.personalInformationDigest){if(!['create_account','link','login'].includes(t.operation))reject();decode64(c.personalInformationDigest,32);}site(c.site);site(c.origin);if(t.audience!==c.origin)reject();b16(c.userIdentifier);nonempty(c.localAccountID);b16(c.bindingID);revision(c.keysetVersion);revision(c.controlEpoch);if(c.keysetVersion==='0')reject();
     if(t.operation==='suspend'){if(c.sessionBinding!==null||c.completionEndpoint!==null||t.assurance!==null)reject();}
     else {b32(c.sessionBinding);text(c.completionEndpoint);let u;try{u=new URL(c.completionEndpoint);}catch{reject();}if(u.origin!==c.origin||u.username||u.password||u.hash||u.href!==c.completionEndpoint)reject();}
   }else if(t.operation==='device_add'){fields(c,['accountID','authorizationGeneration','sessionBinding']);accountID(c.accountID);revision(c.authorizationGeneration);if(c.authorizationGeneration==='0')reject();b32(c.sessionBinding);
   }else{fields(c,['accountID','controlVersion','sessionBinding']);accountID(c.accountID);revision(c.controlVersion);b32(c.sessionBinding);if((t.operation==='account_create')!==(c.controlVersion==='0'))reject();}
   if(t.operation==='device_recover'){if(t.assurance!==null)reject();}
   else if(t.operation!=='suspend')validateAssurance(t.assurance);
-  fields(t.parameters,[...Object.keys(r.params),...(r.params.pub1&&c.signerPolicy?['pub3']:[])]);if(r.params.pub1&&c.signerPolicy)descriptor(t.parameters.pub3,'independent');for(const [k,v]of Object.entries(r.params)){
+  if(t.operation==='device_add'&&t.parameters.deviceName!==undefined){const name=t.parameters.deviceName;if(typeof name!=='string'||!name.trim()||name!==name.trim()||name.length>100||/[\u0000-\u001f\u007f]/.test(name))reject('IDENTITY_DEVICE_NAME_INVALID');}
+  fields(t.parameters,[...Object.keys(r.params),...(t.operation==='device_add'&&t.parameters.deviceName!==undefined?['deviceName']:[]),...(r.params.pub1&&c.signerPolicy?['pub3']:[])]);if(r.params.pub1&&c.signerPolicy)descriptor(t.parameters.pub3,'independent');for(const [k,v]of Object.entries(r.params)){
     if(typeof v==='function')v(t.parameters[k]);
     else {const validator=pairingSchemas[v]||(v==='policy'?validateIdentityPolicy:schemas[v]);if(typeof validator!=='function'||validator(t.parameters[k])!==true)reject('IDENTITY_SCHEMA_UNSUPPORTED');}
   }

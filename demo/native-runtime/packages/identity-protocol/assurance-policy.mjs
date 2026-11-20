@@ -4,13 +4,13 @@ import {validateAssurance} from './schema.mjs';
 // A per-request RP choice raises minima; it never edits user/provider policy.
 export function requestedAssurance(base,level=1){
  validateAssurance(base);if(!Number.isInteger(level)||level<1||level>4)reject('IDENTITY_POLICY_INVALID');
- const requiredLevel=Math.max(base.requiredLevel,level),extra=level===1?[]:level===2?['security-key']:level===3?['mobile-approval']:['mobile-approval','fresh-biometric','security-key'];
+ const requiredLevel=Math.max(base.requiredLevel,level),extra=level===1?[]:level===2?['security-key']:level===3?['mobile-approval']:['mobile-approval','fresh-biometric','additional-method'];
  const factors=[...base.factors,...extra.filter(f=>!base.factors.includes(f))];
  const result={...base,requiredLevel,achievedLevel:requiredLevel,factors};validateAssurance(result);return result;
 }
 export function validateRequestedAssurance(base,requested){
  validateAssurance(base);validateAssurance(requested);
- if(requested.policyRevision!==base.policyRevision||requested.requiredLevel<base.requiredLevel||requested.achievedLevel!==requested.requiredLevel||base.factors.some(f=>!requested.factors.includes(f))||requested.factors.includes('additional-method')&&!base.factors.includes('additional-method'))reject('IDENTITY_POLICY_CHANGED');
+ if(requested.policyRevision!==base.policyRevision||requested.requiredLevel<base.requiredLevel||requested.achievedLevel!==requested.requiredLevel||base.factors.some(f=>!requested.factors.includes(f))||requested.factors.includes('additional-method')&&requested.requiredLevel!==4)reject('IDENTITY_POLICY_CHANGED');
  return requested;
 }
 
