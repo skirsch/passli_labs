@@ -514,3 +514,10 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Commands / outputs: Coordinator scoped patch under ingress lock, nginx-test and same-proxy reload21:53:46.547UTC (13:53:46PST); owned-ticket live probe55,073ms HTTP200 application/json, no HTML, versus prior20,069ms504. Local browser044 click displayed Link/Create immediately. Combined suite109/109 passed before merge c1bede9.
 - Results: proxy fix live on041; styling/current-provider protocol repairs already published. Immediate-choice044 publication awaits frozen043 wire authenticated callback gate. No phone acceptance claimed.
 - Next steps: preserve65s on ingress changes; Coordinator publishes044 after required checks, then verify public choice screen. Retain worktrees through acceptance.
+## 2026-11-20 — Wire callback live acceptance prerequisite
+
+- What we did: prepared demo043 callback check and attempted normal synthetic-browser setup with Coordinator-reserved current rp1 fixture. No real user or wire was affected.
+- Command / executable: protected wire-callback-acceptance.mjs and wire-pair-browser.mjs; bounded read-only API1051 container logs across five hosts.
+- Outputs: Labs c321629 merged/pushed, 108/108 tests; Coordinator staged043. First sequence request 70183ac0-2fde-40e3-8d1b-4b78730edc8f returned frontend503 after5s but node2 completed200 after34.48s; preserved and reconciled without replay. Subsequent unlock and expected decrypted PII passed.
+- Results: local optional-field serialization corrected; expired initial pairing preserved. Fresh normal legacy QR approval passed, but finish explicitly rejected403 IDENTITY_LEGACY_AUTHORITY_RETIRED. No uncertain request remains; exact pairing material retained protected. No authenticated suite callback or phone approval established.
+- Next steps: Coordinator retains sole publisher; required gate needs current hybrid-pairing browser session (legacy helper incompatible with converted synthetic account).043 remains staged,041 serving at last Coordinator report; related044 includes routing fix. No further fixture writes by this chat.
