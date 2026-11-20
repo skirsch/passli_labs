@@ -521,3 +521,11 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Outputs: Labs c321629 merged/pushed, 108/108 tests; Coordinator staged043. First sequence request 70183ac0-2fde-40e3-8d1b-4b78730edc8f returned frontend503 after5s but node2 completed200 after34.48s; preserved and reconciled without replay. Subsequent unlock and expected decrypted PII passed.
 - Results: local optional-field serialization corrected; expired initial pairing preserved. Fresh normal legacy QR approval passed, but finish explicitly rejected403 IDENTITY_LEGACY_AUTHORITY_RETIRED. No uncertain request remains; exact pairing material retained protected. No authenticated suite callback or phone approval established.
 - Next steps: Coordinator retains sole publisher; required gate needs current hybrid-pairing browser session (legacy helper incompatible with converted synthetic account).043 remains staged,041 serving at last Coordinator report; related044 includes routing fix. No further fixture writes by this chat.
+
+## 2026-11-20 — Wire authenticated candidate gate passed
+
+- What we did: implemented protected acceptance harness using the current hybrid pairing helpers and existing owned-native synthetic account. Verified account PII, X-Wing envelope decryption, browser material import, mobile factor proofs and recipient confirmation; no control authority enrollment or relaxation.
+- Command / executable: protected wire-hybrid-browser.mjs followed by wire-callback-acceptance.mjs http://127.0.0.1:62690 0.1.43 with current rp1 fixture/browser files.
+- Outputs: both exit0; candidate043 real provider bootstrap/Direct callback authenticated suite, returned303 /wire; foreign-browser and replay requests rejected; obsolete Northstar callback guard remains410. Completed by22:03:44UTC /14:03:44PST.
+- Results: previous test-input blocker resolved. No uncertain operation remains; fixture reservation released to Coordinator. Wire signature approval and physical-phone acceptance were not exercised.
+- Next steps: sole publisher Coordinator proceeds frozen publication and live version verification. Keep protected fixture/browser material for subsequent acceptance.
