@@ -536,3 +536,10 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Outputs: both exit0; candidate043 real provider bootstrap/Direct callback authenticated suite, returned303 /wire; foreign-browser and replay requests rejected; obsolete Northstar callback guard remains410. Completed by22:03:44UTC /14:03:44PST.
 - Results: previous test-input blocker resolved. No uncertain operation remains; fixture reservation released to Coordinator. Wire signature approval and physical-phone acceptance were not exercised.
 - Next steps: sole publisher Coordinator proceeds frozen publication and live version verification. Keep protected fixture/browser material for subsequent acceptance.
+
+## 2026-11-20 — Public wire callback verification distinction
+
+- What we did: separately passed exact044 candidate callback gate; ran one public043 gate on Coordinator cutover notice.
+- Results: this chat public invocation exited1 CALLBACK_FAILED at callback stage; old harness did not record HTTP response status/body, so cause remains unknown. An orchestration mistake sent a pass message before inspecting the result; immediately retracted it and instructed Coordinator not to rely on it. Candidate043/044 exit0 results remain valid.
+- Verified evidence: Coordinator independently ran public043 gate, exit0; checked public-acceptance.log confirms authenticated suite and foreign/replay rejection. This independent receipt supports publication; it does not explain this chat failure. Added sanitized response diagnostics for future failures. Bounded five-host API logs22:04–22:05 showed three successful bootstrap requests but no evidence proving the callback failure cause.
+- Next steps: Coordinator exclusively owns further public gates/retirement. No duplicate public requests from this chat. Phone/wire-signature acceptance remains separate.
