@@ -585,3 +585,8 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Command / executable: npm test --prefix demo (126/126 passed); focused native UI20/20 includes sign-out/login preserving account and note, and both unknown-user choices.
 - Outputs/results: existing crypto/session verification unchanged; compact presentation and prominent Sign out retained.
 - Next steps: automatic rollout and authenticated returning-login gate, then browser verification.
+
+### 2026-11-20 - Demo048/049 live verification
+- Outputs/results: 048 button update deployed01:09:52UTC, authenticated account/notes and markup checks passed; old047 exited0 in3.051s.049 deployed01:11:26UTC, authenticated keyless login/public checks passed; old048 exited0 in3.357s, no forced termination.049 elapsed2m22s from recorded receipt.
+- Browser verification: live049 Continue with Passli restored existing account and saved note without setup chooser. Signed-in page shows primary Sign out above Demo-only box. Screenshot retained in local northstar-returning049 artifacts; no phone action performed.
+- Tests:126/126 demo and14/14 Passli component tests. Worktree retained for user acceptance.
