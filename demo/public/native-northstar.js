@@ -29,7 +29,7 @@ async function resumeReturn(){
 }
 
 el('password-form').onsubmit=e=>{e.preventDefault();const login=()=>action('password-login',{email:el('email').value,password:el('password').value});if(state?.setup==='link-existing')void start('link',login);else void run(login);};
-el('login').onclick=()=>{if(busy||ticket)return;choosing=true;el('error').textContent='';el('status').textContent='';render();};el('link').onclick=()=>void start('link');el('unlink').onclick=()=>void start('unlink');
+el('login').onclick=()=>void start('discover');el('link').onclick=()=>void start('link');el('unlink').onclick=()=>void start('unlink');
 el('notes').oninput=()=>{if(noteDraft){noteDraft.text=el('notes').value;noteDraft.dirty=true;}};
 el('save').onclick=()=>{const notes=el('notes').value;void run(async()=>{await action('notes-save',{notes});if(noteDraft)noteDraft.dirty=false;el('status').textContent='Note saved.';});};
 el('logout').onclick=()=>void run(async()=>{await action('logout');ticket=null;});el('cancel').onclick=()=>void run(async()=>{await action('cancel');ticket=null;choosing=false;});el('check').onclick=()=>void check();

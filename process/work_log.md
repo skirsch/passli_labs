@@ -579,3 +579,9 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Command / executable: npm test --prefix demo (125/125 passed); git diff --check.
 - Outputs/results: demo047 deployed ab8e1c5 at 01:06:26 UTC; normal authenticated registration/login and public gates passed, predecessor exited normally in 3.339s. Browser observed047/account; connection dropped before visual compact-flow completion.
 - Next steps: deploy048 and verify button position/style; retain worktree for user acceptance.
+
+### 2026-11-20 - Direct returning Passli login (demo049)
+- What we did: Continue with Passli now starts identity discovery instead of unconditionally showing setup. Valid login proof finishes directly; unknown identity receives explicit link/create choice after proof. Updated explanatory text and integration spec.
+- Command / executable: npm test --prefix demo (126/126 passed); focused native UI20/20 includes sign-out/login preserving account and note, and both unknown-user choices.
+- Outputs/results: existing crypto/session verification unchanged; compact presentation and prominent Sign out retained.
+- Next steps: automatic rollout and authenticated returning-login gate, then browser verification.
