@@ -17,16 +17,16 @@ test('native page dispatches link and unlink, finishes on proof, and refreshes a
  }};
  vm.runInNewContext(readFileSync(new URL('../public/native-northstar.js',import.meta.url),'utf8'),context);
  await new Promise(setImmediate);el('link').onclick();await new Promise(setImmediate);await new Promise(setImmediate);
- assert.equal(calls.find(c=>c.path==='/api/identity/handoff').body.operation,'link');assert.match(el('link-state').textContent,/Linked/);assert.equal(new URL(navigations[0]).origin,'https://passli.app');
+ assert.equal(calls.find(c=>c.path==='/api/identity/handoff').body.operation,'link');assert.match(el('link-state').textContent,/Linked/);assert.equal(new URL(navigations[0]).origin,'https://passli.app');assert.equal(new URL(navigations[0]).searchParams.has('compactRP'),false);
  assert.equal(el('notes').value,'Saved note');
  el('notes').value='Edited before saving';el('notes').oninput();el('save').onclick();await new Promise(setImmediate);
  assert.equal(calls.find(c=>c.body?.action==='notes-save').body.notes,'Edited before saving');assert.equal(el('notes').value,'Edited before saving');
 });
 
 for(const choice of ['create','existing'])test('native UI offers immediate '+choice+' choice before any Passli request',async()=>{
- const elements=new Map(),calls=[],el=id=>{if(!elements.has(id))elements.set(id,{focus(){}});return elements.get(id);};let accountChoice=false,account=null,setup=null,ticket=null;
+ const elements=new Map(),calls=[],navigations=[],el=id=>{if(!elements.has(id))elements.set(id,{focus(){}});return elements.get(id);};let accountChoice=false,account=null,setup=null,ticket=null;
  const state=()=>({csrf:'csrf',account,accountChoice,setup,ticket});
- const context={location:{origin:'https://demo.passli.app'},document:{getElementById:el,querySelectorAll:()=>[]},URLSearchParams,window:{open:()=>({location:{replace(){}},close(){}}),addEventListener(){}},fetch:async(path,options)=>{
+ const context={location:{origin:'https://demo.passli.app'},document:{getElementById:el,querySelectorAll:()=>[]},URLSearchParams,window:{open:()=>({location:{replace:url=>navigations.push(url)},close(){}}),addEventListener(){}},fetch:async(path,options)=>{
   const body=options?.body?JSON.parse(options.body):null;calls.push({path,body});let value={};
   if(path==='/api/northstar/state')value=state();
   if(path==='/api/identity/handoff'){ticket='ticket';value={ticket,link:'passli://rp-login?origin=https%3A%2F%2Fdemo.passli.app&ticket=ticket'};}
@@ -40,7 +40,7 @@ for(const choice of ['create','existing'])test('native UI offers immediate '+cho
  await new Promise(setImmediate);el('login').onclick();await new Promise(setImmediate);await new Promise(setImmediate);
  assert.equal(el('account-choice').hidden,false);assert.equal(el('signed-out').hidden,true);assert.equal(el('approval').hidden,true);assert(!calls.some(c=>c.path.includes('/api/identity/')),'choice must precede any approval request');
  el('choose-'+choice).onclick();await new Promise(setImmediate);await new Promise(setImmediate);
- if(choice==='create'){assert.equal(el('signed-in').hidden,false);assert.equal(calls.filter(c=>c.path.endsWith('/finish')).length,1);}
+ if(choice==='create'){assert.equal(new URL(navigations[0]).searchParams.get('compactRP'),'1');assert.equal(el('signed-in').hidden,false);assert.equal(calls.filter(c=>c.path.endsWith('/finish')).length,1);}
  else{assert.equal(el('signed-out').hidden,false);assert.equal(el('passli-login').hidden,true);assert.equal(el('signin-heading').textContent,'Sign in to your existing account');assert(!calls.some(c=>c.path.endsWith('/finish')));}
 });
 
@@ -74,3 +74,15 @@ for(const hash of ['#passli-handoff=foreign','#passli-cancel=foreign','#passli-c
  const h=unlinkPage({restored:true,hash});await new Promise(setImmediate);assert.deepEqual(h.calls.map(c=>c.path),['/api/northstar/state']);assert.equal(h.state().ticket,'same-ticket');
 });
 test('stale completed return marker cannot replay a request',async()=>{const h=unlinkPage({hash:'#passli-handoff=same-ticket'});await new Promise(setImmediate);assert.deepEqual(h.calls.map(c=>c.path),['/api/northstar/state']);});
+
+for(const operation of ['discover','login','create_account','link','unlink'])test('restored '+operation+' uses the appropriate Passli presentation',async()=>{
+ const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,{focus(){}});return elements.get(id)};
+ const state={csrf:'csrf',account:null,ticket:'pending-ticket',pendingOperation:operation};
+ vm.runInNewContext(readFileSync(new URL('../public/native-northstar.js',import.meta.url),'utf8'),{
+  location:{origin:'https://demo.passli.app',hash:''},document:{getElementById:el,querySelectorAll:()=>[]},URLSearchParams,window:{addEventListener(){}},
+  fetch:async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>state})
+ });
+ await new Promise(setImmediate);
+ const url=new URL(el('continue').href);assert.equal(url.origin,'https://passli.app');assert.match(url.searchParams.get('nativeRP'),/ticket=pending-ticket/);
+ assert.equal(url.searchParams.get('compactRP'),['discover','login','create_account'].includes(operation)?'1':null);
+});

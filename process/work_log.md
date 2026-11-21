@@ -567,3 +567,9 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Commands/results: npm --prefix demo test120/120 passed, including same-tab navigation, existing ticket reuse, waiting/proof/complete return states, cancellation preserving account/notes, forged/stale/duplicate markers. Server signature validation unchanged.
 - Outputs: demo046, coordinated with web1160 operation labels and explicit return markers. Persistent notes unchanged; real phone unlink completion not claimed by tests.
 - Next steps: Coordinator builds/stages both and publishes web1160 before demo046. Normal authenticated candidate/public acceptance and actual live navigation/label verification; retain worktrees until human acceptance.
+
+### 2026-11-20 - Northstar automatic account creation presentation (demo047)
+- What we did: use existing Passli compactRP mode for discovery/login/account creation, including restored pending requests. Required consent/error/mobile flows remain visible; link/unlink retain their existing presentation.
+- Command / executable: npm test (demo); node --test apps/web/tests/native-rp-mobile-instruction.test.cjs apps/web/tests/native-rp-entry.test.cjs (Passli).
+- Results: focused UI 19/19 and Passli 14/14 passed. Initial full suite caught the omitted runtime version bump; synchronized version.mjs with package/lock047 before rerunning.
+- Next steps: merge and automatically deploy demo047 through Coordinator; verify public artifact and authenticated account flow. No provider or signature changes.
