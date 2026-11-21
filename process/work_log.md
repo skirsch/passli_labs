@@ -573,3 +573,9 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Command / executable: npm test (demo); node --test apps/web/tests/native-rp-mobile-instruction.test.cjs apps/web/tests/native-rp-entry.test.cjs (Passli).
 - Results: focused UI 19/19 and Passli 14/14 passed. Initial full suite caught the omitted runtime version bump; synchronized version.mjs with package/lock047 before rerunning.
 - Next steps: merge and automatically deploy demo047 through Coordinator; verify public artifact and authenticated account flow. No provider or signature changes.
+
+### 2026-11-20 - Northstar sign-out button (demo048)
+- What we did: moved Sign out before the demo-only login box and reused Save note's primary button class; sign-out handler unchanged.
+- Command / executable: npm test --prefix demo (125/125 passed); git diff --check.
+- Outputs/results: demo047 deployed ab8e1c5 at 01:06:26 UTC; normal authenticated registration/login and public gates passed, predecessor exited normally in 3.339s. Browser observed047/account; connection dropped before visual compact-flow completion.
+- Next steps: deploy048 and verify button position/style; retain worktree for user acceptance.
