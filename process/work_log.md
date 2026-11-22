@@ -590,3 +590,8 @@ link/login/unlink. Next: rollout and public acceptance; phone testing remains.
 - Outputs/results: 048 button update deployed01:09:52UTC, authenticated account/notes and markup checks passed; old047 exited0 in3.051s.049 deployed01:11:26UTC, authenticated keyless login/public checks passed; old048 exited0 in3.357s, no forced termination.049 elapsed2m22s from recorded receipt.
 - Browser verification: live049 Continue with Passli restored existing account and saved note without setup chooser. Signed-in page shows primary Sign out above Demo-only box. Screenshot retained in local northstar-returning049 artifacts; no phone action performed.
 - Tests:126/126 demo and14/14 Passli component tests. Worktree retained for user acceptance.
+
+### 2026-11-22 - Extension216 pre-store package
+- What we did: packaged tested Delete All Connections extension216 from frozen Passli276391e3ec5288034c1696a3bf854d0939550fcb. Existing managed native build/npm ci/build:extension and deterministic package-extension.py used; snapshot provenance bound to runner SHA.
+- Outputs/results: downloads/extension/passli-extension-0.1.216.zip, checksum2561c1df24b22fa02e82e6f39ff702fe48ab0cb545725664378f2bdd106fd210, release metadata and install guide. Build completed and slot cleaned; ZIP manifest216/button/vendor files verified. Owner two behavioral tests passed; full suite81pass/two reproduced baseline failures, no source suite repeated.
+- Next steps: publish and verify public GitHub ZIP/hash. Browser load/reload and Delete All Connections acceptance separate; no API/web/iOS rollout.
