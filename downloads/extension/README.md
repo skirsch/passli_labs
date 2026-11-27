@@ -1,6 +1,6 @@
 # Passli extension download
 
-[Download version 0.1.218](passli-extension-0.1.218.zip) · [SHA-256](passli-extension-0.1.218.zip.sha256)
+[Download version 0.1.219](passli-extension-0.1.219.zip) · [SHA-256](passli-extension-0.1.219.zip.sha256)
 
 This is the pre-store Chrome/Edge extension. Download the ZIP and extract it to
 a permanent folder. Open `chrome://extensions` (Edge: `edge://extensions`), enable
